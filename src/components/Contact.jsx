@@ -35,16 +35,16 @@ class Contact extends Component {
     this.setState({ loading: true });
 
     const { form } = this.state;
+    const emailParams = {
+      from_name: form.name,
+      reply_to: form.email,
+      message_html: form.message
+    };
+
     emailjs.send(
       import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
-      import.meta.env.VITE_APP_EMAILJS_TEMPLATE_ID,
-      {
-        from_name: form.name,
-        to_name: 'Arshiya Shafizade',
-        from_email: form.email,
-        to_email: 'shafizadearshiya@gmail.com',
-        message: form.message,
-      },
+      'default_service', // This should be changed if you have a specific service ID.
+      emailParams,
       import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
     ).then(
       () => {
