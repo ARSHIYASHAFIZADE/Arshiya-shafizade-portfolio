@@ -32,8 +32,6 @@ class Contact extends Component {
 
   handleSubmit = (event) => {
     event.preventDefault();
-    console.log('Service ID:', import.meta.env.VITE_APP_EMAILJS_SERVICE_ID);
-    console.log('Public Key:', import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY);
     this.setState({ loading: true });
 
     const { form } = this.state;
