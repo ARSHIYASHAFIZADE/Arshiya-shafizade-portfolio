@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite';
-
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 export default defineConfig({
+  plugins: [react()],
   server: {
-    host: '0.0.0.0', // Bind to 0.0.0.0 for Render
-    port: parseInt(process.env.PORT) || 3000, // Use Render's PORT or fallback to 3000
-    allowedHosts: ['arshiyashafizade-portfolio-2.onrender.com'], // Allow your Render host
+    host: "0.0.0.0",
+    port: parseInt(process.env.PORT) || 3000,
   },
 });
