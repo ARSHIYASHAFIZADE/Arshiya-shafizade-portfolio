@@ -15,15 +15,9 @@ import {
   git,
   figma,
   docker,
-  meta,
   image,
-  tesla,
-  shopify,
   carrent,
-  jobit,
-  tripguide,
   threejs,
-  github,
   render
 } from "../assets";
 
@@ -35,10 +29,10 @@ export const navLinks = [
 ];
 
 const services = [
-  { title: "Web Developer", icon: web },
-  { title: "Data Scientist", icon: mobile },
-  { title: "Backend Developer", icon: backend },
-  { title: "Ai solutions", icon: creator },
+  { title: "Web Developer", icon: "https://cdn2.iconfinder.com/data/icons/seo-and-web-development-filled-outline/64/Backend-Development-Website-Server-Internet-1024.png" },
+  { title: "Data Scientist", icon: "https://cdn-icons-png.flaticon.com/512/4824/4824797.png" },
+  { title: "Data visualizer", icon: "https://cdn2.iconfinder.com/data/icons/artifiial-intelligence/70/48_Data_Visualization-1024.png" },
+  { title: "Researcher", icon: "https://icon-library.com/images/research-icon-png/research-icon-png-9.jpg" },
 ];
 
 const technologies = [
@@ -59,44 +53,85 @@ const technologies = [
 
 const experiences = [
   {
-    title: "Full stack web Developer",
+    title: "Full Stack Web Developer",
     company_name: "SamAi",
     icon: image,
     iconBg: "#383E56",
-    date: "September 2024 - november 2024",
+    date: "September 2024 - November 2024",
     points: [
-      "Developing and maintaining web applications using React | python and other related technologies.",
+      "Developing and maintaining web applications using React | Python and other related technologies.",
       "Collaborating with cross-functional teams including Doctors, AI specialists to create high-quality products.",
       "Implementing responsive design and ensuring cross-browser compatibility.",
       "Led the integration of AI models into a web-based application using Flask, enabling seamless interaction with web data as a full-stack developer.",
     ],
   },
+  {
+    title: "E-commerce Web Developer",
+    company_name: "Arshiya Webstore",
+    icon: "https://static.vecteezy.com/system/resources/previews/016/017/018/large_2x/ecommerce-icon-free-png.png", 
+    iconBg: "#383E56",
+    date: "November 2023 - December 2023",
+    points: [
+      "Built and managed the Arshiya Webstore to learn about e-commerce development.",
+      "Gained experience in managing products, creating product carts, and integrating payment systems.",
+      "Designed and implemented features for user authentication and product filtering.",
+      "Ensured a smooth user experience with responsive design and cross-browser compatibility.",
+    ],
+  },
+  {
+    title: "Game Developer",
+    company_name: "Othello Game Project",
+    icon: "https://images.launchbox-app.com/81b5b418-a1a2-4daa-8986-6bfb1ea39b3f.png", 
+    iconBg: "#383E56",
+    date: "December 2024 - January 2025",
+    points: [
+      "Developed an Othello game in JavaFX, leveraging mathematical concepts and game logic.",
+      "Gained expertise in JavaFX and Scene Builder to create a visually appealing and functional game interface.",
+      "Implemented features like game saving and loading to enhance the user experience.",
+      "Learned about game development workflows, including handling game states and dynamic updates.",
+    ],
+  },
+  {
+    title: "AI Researcher",
+    company_name: "Weed Detection System",
+    icon: "https://tse3.mm.bing.net/th?id=OIP.u8UxVZi9bSiuyhfhpe64HAHaHa&w=474&h=474&c=7", 
+    iconBg: "#383E56",
+    date: "January 2025 - February 2025",
+    points: [
+      "Developed a weed detection system using neural networks to identify weeds in agricultural fields.",
+      "Learned about and applied morphological image operations for preprocessing and feature extraction.",
+      "Implemented image segmentation techniques to isolate regions of interest for better analysis.",
+      "Explored and experimented with various neural network architectures to achieve optimal results.",
+      "Gained hands-on experience with training, testing, and fine-tuning neural networks for real-world applications.",
+    ],
+  },
 ];
+
 
 const testimonials = [
   {
     testimonial:
-      "I thought it was impossible to make a website as beautiful as our product, but Rick proved me wrong.",
-    name: "Sara Lee",
-    designation: "CFO",
-    company: "Acme Co",
-    image: "https://randomuser.me/api/portraits/women/4.jpg",
+      "Research and Publications:Co-authored research on Diagnosis of Breast Cancer Tumor Type, using AI to enhance diagnostic accuracy through a fuzzy combination of regression methods.",
+    name: "Research and Publications",
+    designation: "Developer&researcher",
+    company: "SamAi",
+    image: image,
   },
   {
     testimonial:
-      "I've never met a web developer who truly cares about their clients' success like Rick does.",
-    name: "Chris Brown",
-    designation: "COO",
-    company: "DEF Corp",
-    image: "https://randomuser.me/api/portraits/men/5.jpg",
+      "CIMP Diploma",
+    name: "Sunway University in sunway city-Malaysia",
+    designation: "Student",
+    company: "Sunway University",
+    image: "https://th.bing.com/th/id/R.e914efa552b34eeb7845d9042ec9d4e9?rik=7HX9fTJvjui1MQ&riu=http%3a%2f%2fwww.chooseright.org%2fwp-content%2fuploads%2f2014%2f04%2fSunway-University-logo.jpg&ehk=%2fQjLTJAyL2c5ul0ZQDjlIA6pI0z1GWNH5rhvRfLARzg%3d&risl=&pid=ImgRaw&r=0",
   },
   {
     testimonial:
-      "After Rick optimized our website, our traffic increased by 50%. We can't thank them enough!",
-    name: "Lisa Wang",
-    designation: "CTO",
-    company: "456 Enterprises",
-    image: "https://randomuser.me/api/portraits/women/6.jpg",
+      "Bachelor of Computer Science, Specialization in AI and extension in Data Science!, Second year student with CGPA:3.5",
+    name: "Taylor's University in sunway city-Malaysia",
+    designation: "Student",
+    company: "Taylor's University",
+    image: "https://media.glassdoor.com/sqll/319279/taylor-s-university-college-squarelogo-1428399291142.png",
   },
 ];
 

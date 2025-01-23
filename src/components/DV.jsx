@@ -44,7 +44,7 @@ const Dv = () => {
         Data Visualization
       </h1>
       <p className="text-xl text-center mt-2 mb-4 text-white">
-        Swipe up or down (or use the buttons) to browse insights in 3D.
+        use the buttons to browse the insights.
       </p>
 
       <div

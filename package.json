@@ -5,8 +5,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "build": "vite build",
+    "start": "vite preview",
     "dev": "vite",
-    "build": "vite build && echo Build completed!",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
