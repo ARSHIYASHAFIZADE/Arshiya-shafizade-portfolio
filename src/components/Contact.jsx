@@ -32,6 +32,8 @@ class Contact extends Component {
 
   handleSubmit = (event) => {
     event.preventDefault();
+    console.log('Service ID:', import.meta.env.VITE_APP_EMAILJS_SERVICE_ID);
+    console.log('Public Key:', import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY);
     this.setState({ loading: true });
 
     const { form } = this.state;
@@ -43,7 +45,7 @@ class Contact extends Component {
 
     emailjs.send(
       import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
-      'default_service', // This should be changed if you have a specific service ID.
+      'template_7rkkl05', // This should be changed if you have a specific service ID.
       emailParams,
       import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
     ).then(
