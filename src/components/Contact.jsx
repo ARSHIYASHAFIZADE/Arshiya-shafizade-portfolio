@@ -37,31 +37,27 @@ class Contact extends Component {
     this.setState({ loading: true });
 
     const { form } = this.state;
+
     const emailParams = {
       from_name: form.name,
       reply_to: form.email,
       message_html: form.message
     };
-
+    
     emailjs.send(
-      import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
-      'template_7rkkl05', // This should be changed if you have a specific service ID.
+      'service_w063lxa',
+      'template_id_here', 
       emailParams,
-      import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
+      'xw9guJzESZpCj5tM_'  
     ).then(
-      () => {
-        this.setState({
-          loading: false,
-          form: { name: '', email: '', message: '' }
-        });
-        alert('Thank you. I will get back to you as soon as possible.');
-      },
+      response => console.log('Email successfully sent!', response),
+      error => console.error('Failed to send email:', error)
+    ),
       (error) => {
         this.setState({ loading: false });
         console.error('Failed to send the message, error:', error);
         alert('Ahh, something went wrong. Please try again.');
       }
-    );
   };
 
   render() {
