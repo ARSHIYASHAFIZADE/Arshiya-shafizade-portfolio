@@ -1,5 +1,5 @@
 # Arshiyashafizade Portfolio
-live on: https://arshiyashafizade-portfolio-2.onrender.com
+live on vercel: arshiyashafizade-portfolio.vercel.app
 
 Welcome to my personal portfolio on GitHub! This site features a unique 3D model of myself and an interactive phone that showcases one of my exciting projects. Dive into a creative presentation enhanced with playful stickers and innovative design.
 
