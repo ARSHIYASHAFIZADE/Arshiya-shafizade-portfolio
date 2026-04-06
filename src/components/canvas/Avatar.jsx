@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
+import { ErrorBoundary } from "react-error-boundary";
 import CanvasLoader from "../Loader";
 import * as THREE from "three";
 
@@ -23,14 +24,14 @@ const Computers = ({ isMobile }) => {
   // Set initial rotation to look left when loaded
   useEffect(() => {
     if (modelRef.current) {
-      modelRef.current.rotation.y = 1; // Set initial rotation to 180 degrees to face the opposite direction
+      modelRef.current.rotation.y = 1;
     }
   }, []);
 
   // Add rotation animation
   useFrame(() => {
     if (modelRef.current) {
-      modelRef.current.rotation.y += 0.005; // Slow rotation
+      modelRef.current.rotation.y += 0.005;
       modelRef.current.scale.set(2, 2, 2);
     }
   });
@@ -38,11 +39,11 @@ const Computers = ({ isMobile }) => {
   return (
     <mesh ref={modelRef}>
       <primitive
-        object={scene} // Directly pass the GLTF model object
-        position={[0, -1.5, 0]} // Adjusted default position
-        rotation={[-0.01, 0, 0]} // Adjusted rotation
+        object={scene}
+        position={[0, -1.5, 0]}
+        rotation={[-0.01, 0, 0]}
         material={{ color: "#FFFFFF" }}
-        scale={[2, 2, 2]} // Scale the model to make it larger
+        scale={[2, 2, 2]}
       />
       <meshStandardMaterial attach="shadow" color="#000000" />
     </mesh>
@@ -53,7 +54,7 @@ const ComputersCanvas = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 768px)"); // Adjusted for larger screens
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
     setIsMobile(mediaQuery.matches);
 
     const handleMediaQueryChange = (event) => setIsMobile(event.matches);
@@ -65,29 +66,33 @@ const ComputersCanvas = () => {
   }, []);
 
   return (
-    <Canvas
-      frameloop="demand"
-      shadows
-      dpr={[1, 2]}
-      camera={{ position: [10, 5, 10], fov: 35 }}
-      gl={{ preserveDrawingBuffer: true }}
-      className="z-10" // Ensure model is on top of other elements
-    >
-      <ambientLight intensity={0.5} />{" "}
-      {/* Ambient light for overall scene brightness */}
-      <pointLight position={[10, 10, 10]} intensity={200} />{" "}
-      {/* Directional light for highlighting the model */}
-      <Suspense fallback={<CanvasLoader />}>
-        <OrbitControls
-          enableZoom={false}
-          maxPolarAngle={Math.PI / 2}
-          minPolarAngle={Math.PI / 3}
-          rotateSpeed={0.5} // Adjust rotation speed
-        />
-        <Computers isMobile={isMobile} />
-      </Suspense>
-      <Preload all />
-    </Canvas>
+    <ErrorBoundary fallback={null}>
+      <Canvas
+        frameloop="always"
+        shadows
+        dpr={[1, 2]}
+        camera={{ position: [10, 5, 10], fov: 35 }}
+        gl={{ preserveDrawingBuffer: true }}
+        className="z-10"
+      >
+        {/* Boosted lighting so the model isn't too dark */}
+        <ambientLight intensity={2.5} />
+        <pointLight position={[10, 10, 10]} intensity={600} />
+        <pointLight position={[-10, 5, -5]} intensity={300} color="#b0c4ff" />
+        <directionalLight position={[0, 10, 5]} intensity={1.5} />
+
+        <Suspense fallback={<CanvasLoader />}>
+          <OrbitControls
+            enableZoom={false}
+            maxPolarAngle={Math.PI / 2}
+            minPolarAngle={Math.PI / 3}
+            rotateSpeed={0.5}
+          />
+          <Computers isMobile={isMobile} />
+        </Suspense>
+        <Preload all />
+      </Canvas>
+    </ErrorBoundary>
   );
 };
 

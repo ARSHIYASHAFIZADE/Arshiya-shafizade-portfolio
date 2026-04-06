@@ -149,18 +149,60 @@ const testimonials = [
 
 const projects = [
   {
-    name: "SamAi",
+    name: "Ashxcribe",
     description:
-      "Ai web application to predict diabetes for male and female separately, liver disease detection, hurt detection, and breast-cancer for females.",
+      "Multi-tenant SCRUM standup platform that records meetings, transcribes them in real-time with Groq Whisper, and generates AI-powered SCRUM documents. Supports multi-company workspaces, custom templates, and PDF/DOCX export.",
     tags: [
-      { name: "react", color: "blue-text-gradient" },
-      { name: "tailwind", color: "blue-text-gradient" },
-      { name: "Sqlite", color: "green-text-gradient" },
-      { name: "flask", color: "pink-text-gradient" },
+      { name: "Next.js", color: "blue-text-gradient" },
+      { name: "Supabase", color: "green-text-gradient" },
+      { name: "Groq AI", color: "pink-text-gradient" },
+      { name: "Tailwind", color: "blue-text-gradient" },
     ],
-    image: carrent,
+    image: "https://image.thum.io/get/width/400/crop/230/https://scrum-tassk-automation.vercel.app",
     icon: render,
-    source_code_link: "https://sam-ai-7lwa.onrender.com",
+    source_code_link: "https://scrum-tassk-automation.vercel.app",
+  },
+  {
+    name: "The Neon Canopy",
+    description:
+      "An immersive 3D bioluminescent jungle experience featuring six mythical creatures with cinematic visuals, procedural audio synthesis, and a five-phase animated introduction. Built with Three.js, React Three Fiber, and advanced post-processing effects.",
+    tags: [
+      { name: "Three.js", color: "blue-text-gradient" },
+      { name: "Next.js", color: "green-text-gradient" },
+      { name: "Framer Motion", color: "pink-text-gradient" },
+      { name: "TypeScript", color: "blue-text-gradient" },
+    ],
+    image: "https://image.thum.io/get/width/400/crop/230/https://my-jungle-seven.vercel.app",
+    icon: render,
+    source_code_link: "https://my-jungle-seven.vercel.app",
+  },
+  {
+    name: "ALF — Ash Loves Files",
+    description:
+      "Universal file converter supporting 120+ formats across 8 categories including image, document, audio, video, ebook, archive, data, and font. Free, no sign-up required. Built with a FastAPI backend, Celery task queue, and Docker containerization.",
+    tags: [
+      { name: "Next.js", color: "blue-text-gradient" },
+      { name: "FastAPI", color: "green-text-gradient" },
+      { name: "Python", color: "pink-text-gradient" },
+      { name: "Docker", color: "blue-text-gradient" },
+    ],
+    image: "https://image.thum.io/get/width/400/crop/230/https://frontend-production-2bfcc.up.railway.app",
+    icon: render,
+    source_code_link: "https://frontend-production-2bfcc.up.railway.app",
+  },
+  {
+    name: "SAM AI — Clinical Diagnostics",
+    description:
+      "AI-powered clinical diagnostic platform with five ML models screening for heart disease, diabetes, liver disease, and breast cancer. Returns risk scores with confidence intervals in under one second. Includes a medical Q&A chatbot powered by Mistral-7B.",
+    tags: [
+      { name: "Next.js", color: "blue-text-gradient" },
+      { name: "Flask", color: "green-text-gradient" },
+      { name: "scikit-learn", color: "pink-text-gradient" },
+      { name: "Mistral-7B", color: "blue-text-gradient" },
+    ],
+    image: "https://image.thum.io/get/width/400/crop/230/https://frontend-production-0b91.up.railway.app",
+    icon: render,
+    source_code_link: "https://frontend-production-0b91.up.railway.app",
   },
 ];
 

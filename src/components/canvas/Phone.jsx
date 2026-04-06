@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
+import { ErrorBoundary } from "react-error-boundary";
 import * as THREE from "three";
 import CanvasLoader from "../Loader";
 
@@ -35,35 +36,37 @@ const Model = () => {
 
 const SceneCanvas = () => {
   return (
-    <Canvas
-      shadows
-      frameloop="demand"
-      dpr={[1, 2]}
-      gl={{ preserveDrawingBuffer: true, alpha: true }}
-      style={{ background: "transparent" }}
-      camera={{
-        fov: 50,
-        near: 0.1,
-        far: 500,
-        position: [0, 10, 30],
-      }}
-    >
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 15, 5]} intensity={1.5} castShadow />
+    <ErrorBoundary fallback={null}>
+      <Canvas
+        shadows
+        frameloop="demand"
+        dpr={[1, 2]}
+        gl={{ preserveDrawingBuffer: true, alpha: true }}
+        style={{ background: "transparent" }}
+        camera={{
+          fov: 50,
+          near: 0.1,
+          far: 500,
+          position: [0, 10, 30],
+        }}
+      >
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[10, 15, 5]} intensity={1.5} castShadow />
 
-      <Suspense fallback={<CanvasLoader />}>
-        <OrbitControls
-          enableZoom={false} 
-          autoRotate={false}
-          maxPolarAngle={Math.PI / 2.5}
-          minPolarAngle={Math.PI / 3}
-          minDistance={10}
-          maxDistance={50}
-        />
-        <Model />
-        <Preload all />
-      </Suspense>
-    </Canvas>
+        <Suspense fallback={<CanvasLoader />}>
+          <OrbitControls
+            enableZoom={false}
+            autoRotate={false}
+            maxPolarAngle={Math.PI / 2.5}
+            minPolarAngle={Math.PI / 3}
+            minDistance={10}
+            maxDistance={50}
+          />
+          <Model />
+          <Preload all />
+        </Suspense>
+      </Canvas>
+    </ErrorBoundary>
   );
 };
 
