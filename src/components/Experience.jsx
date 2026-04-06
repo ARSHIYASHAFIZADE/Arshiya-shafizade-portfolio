@@ -84,7 +84,7 @@ const Experience = () => {
         </h2>
       </motion.div>
 
-      <div className="mt-10">
+      <div className="mt-10" style={{ clipPath: "inset(-40px 0px -40px 0px)" }}>
         <Swiper
           slidesPerView={1}
           spaceBetween={24}

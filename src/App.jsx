@@ -26,7 +26,9 @@ const App = () => {
         <About />
         <Experience />
         <Tech />
-        <Works />
+        <div className="relative z-10 overflow-visible">
+          <Works />
+        </div>
         <Feedbacks />
         <div className="relative z-0">
           <Contact />

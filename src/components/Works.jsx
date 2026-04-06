@@ -16,7 +16,7 @@ const ProjectCard = ({
   source_code_link,
 }) => {
   return (
-    <motion.div variants={fadeIn("up", "spring", index * 0.4, 0.8)}>
+    <motion.div variants={fadeIn("up", "spring", index * 0.4, 0.8)} className="relative hover:z-50 overflow-visible">
       <Tilt
         options={{ max: 20, scale: 1.02, speed: 450 }}
         className="relative p-5 rounded-2xl w-full sm:w-[360px]
@@ -106,7 +106,7 @@ const Works = () => {
         </motion.p>
       </div>
 
-      <div className="mt-20 flex flex-wrap gap-7 justify-center">
+      <div className="mt-20 flex flex-wrap gap-7 justify-center overflow-visible py-4">
         {projects.map((project, index) => (
           <ProjectCard key={`project-${index}`} index={index} {...project} />
         ))}

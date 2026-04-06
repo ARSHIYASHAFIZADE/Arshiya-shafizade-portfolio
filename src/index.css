@@ -113,6 +113,11 @@
   -webkit-text-fill-color: transparent;
 }
 
+/* Allow experience cards to lift on hover without top clipping */
+.swiper {
+  overflow: visible !important;
+}
+
 /* canvas- styles */
 .canvas-loader {
   font-size: 10px;
