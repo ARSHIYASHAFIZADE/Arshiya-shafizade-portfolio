@@ -8,7 +8,6 @@ import Works from "./Works";
 import Feedbacks from "./Feedbacks";
 import Contact from "./Contact";
 import CanvasLoader from "./Loader";
-import DV from "./DV"
 
 export {
   Hero,
@@ -20,8 +19,7 @@ export {
   Feedbacks,
   Contact,
   CanvasLoader,
-  PhoneCanvas, 
-  AvatarCanvas, 
-  StarsCanvas, 
-  DV
+  PhoneCanvas,
+  AvatarCanvas,
+  StarsCanvas,
 };

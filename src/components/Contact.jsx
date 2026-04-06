@@ -10,12 +10,9 @@ class Contact extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      form: {
-        name: '',
-        email: '',
-        message: '',
-      },
+      form: { name: '', email: '', message: '' },
       loading: false,
+      sent: false,
     };
     this.formRef = React.createRef();
   }
@@ -23,10 +20,7 @@ class Contact extends Component {
   handleChange = (event) => {
     const { name, value } = event.target;
     this.setState(prevState => ({
-      form: {
-        ...prevState.form,
-        [name]: value
-      }
+      form: { ...prevState.form, [name]: value }
     }));
   };
 
@@ -35,170 +29,144 @@ class Contact extends Component {
     this.setState({ loading: true });
 
     const { form } = this.state;
-    const emailParams = {
-      from_name: form.name,
-      reply_to: form.email,
-      message_html: form.message
-    };
 
     emailjs.send(
       import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
-      'template_7rkkl05', 
-      emailParams,
+      'template_7rkkl05',
+      {
+        from_name: form.name,
+        reply_to: form.email,
+        to_email: 'a6833351@gmail.com',
+        message_html: form.message,
+      },
       import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
     ).then(
       () => {
-        this.setState({
-          loading: false,
-          form: { name: '', email: '', message: '' }
-        });
-        alert('Thank you. I will get back to you as soon as possible.');
+        this.setState({ loading: false, sent: true, form: { name: '', email: '', message: '' } });
+        setTimeout(() => this.setState({ sent: false }), 5000);
       },
       (error) => {
         this.setState({ loading: false });
-        console.error('Failed to send the message, error:', error);
-        alert('Ahh, something went wrong. Please try again.');
+        console.error('EmailJS error:', error);
+        alert('Something went wrong. Please try again.');
       }
     );
   };
 
   render() {
-    const { form, loading } = this.state;
+    const { form, loading, sent } = this.state;
+
     return (
       <div className="xl:mt-12 flex xl:flex-row flex-col-reverse gap-10 overflow-hidden">
+
+        {/* Form */}
         <motion.div
           variants={slideIn('left', 'tween', 0.2, 1)}
-          className="
-            flex-[0.75]
-            p-8 
-            rounded-2xl 
-            relative
-            bg-[rgba(10,10,50,0.5)] 
-            backdrop-blur-lg
-            border border-[rgba(255,255,255,0.1)]
-            shadow-lg shadow-blue-800/50
-          "
+          className="flex-[0.75] rounded-2xl relative overflow-hidden"
         >
-          <p className={`${styles.sectionSubText} text-white`}>Get in touch</p>
-          <h3
-            className={`${styles.sectionHeadText} text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 drop-shadow-lg`}
-          >
-            Contact.
-          </h3>
+          {/* Glass card */}
+          <div className="relative p-8 rounded-2xl bg-[rgba(10,10,40,0.7)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-2xl shadow-blue-900/40">
 
-          <form
-            ref={this.formRef}
-            onSubmit={this.handleSubmit}
-            className="mt-12 flex flex-col gap-8"
-          >
-            <label className="flex flex-col">
-              <span className="text-white font-medium mb-4">Your Name</span>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={this.handleChange}
-                placeholder="What's your good name?"
-                className="
-                  py-4 px-6 
-                  rounded-lg 
-                  border border-[rgba(255,255,255,0.2)]
-                  bg-[rgba(255,255,255,0.1)] 
-                  placeholder:text-gray-300 
-                  text-white 
-                  outline-none 
-                  font-medium 
-                  focus:border-blue-500 
-                  hover:scale-[1.02]
-                  transition-transform
-                "
-              />
-            </label>
+            {/* Glow accent */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
 
-            <label className="flex flex-col">
-              <span className="text-white font-medium mb-4">Your email</span>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={this.handleChange}
-                placeholder="What's your email address?"
-                className="
-                  py-4 px-6 
-                  rounded-lg 
-                  border border-[rgba(255,255,255,0.2)]
-                  bg-[rgba(255,255,255,0.1)] 
-                  placeholder:text-gray-300 
-                  text-white 
-                  outline-none 
-                  font-medium
-                  focus:border-blue-500 
-                  hover:scale-[1.02]
-                  transition-transform
-                "
-              />
-            </label>
+            <p className="text-purple-300 text-sm font-medium tracking-widest uppercase mb-1">
+              Get in touch
+            </p>
+            <h3 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-8">
+              Contact.
+            </h3>
 
-            <label className="flex flex-col">
-              <span className="text-white font-medium mb-4">Your Message</span>
-              <textarea
-                rows={7}
-                name="message"
-                value={form.message}
-                onChange={this.handleChange}
-                placeholder="What do you want to say?"
-                className="
-                  py-4 px-6 
-                  rounded-lg 
-                  border border-[rgba(255,255,255,0.2)]
-                  bg-[rgba(255,255,255,0.1)] 
-                  placeholder:text-gray-300 
-                  text-white 
-                  outline-none 
-                  font-medium
-                  focus:border-blue-500 
-                  hover:scale-[1.02]
-                  transition-transform
-                "
-              />
-            </label>
+            <form ref={this.formRef} onSubmit={this.handleSubmit} className="flex flex-col gap-5">
 
-            <button
-              type="submit"
-              className="
-                py-3 px-8 
-                rounded-xl 
-                outline-none 
-                w-fit 
-                text-white font-bold 
-                bg-gradient-to-r from-blue-700 to-purple-700 
-                hover:from-blue-500 hover:to-purple-500
-                shadow-md shadow-blue-500/50
-                hover:scale-105 
-                transition-transform 
-                duration-300 
-                ease-in-out
-              "
-            >
-              {loading ? "Sending..." : "Send"}
-            </button>
-          </form>
-        </motion.div>
+              {/* Name */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={form.name}
+                  onChange={this.handleChange}
+                  required
+                  placeholder="What's your name?"
+                  className="w-full px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white placeholder:text-purple-300/40 text-sm outline-none focus:border-purple-500 focus:bg-[rgba(255,255,255,0.08)] transition-all duration-200"
+                />
+              </div>
 
-        <motion.div
-          variants={slideIn('right', 'tween', 0.2, 1)}
-          className="
-            xl:flex-1 xl:h-auto 
-            md:h-[550px] 
-            h-[350px] 
-            relative
-            flex items-center justify-center
-          "
-        >
-          <div className="w-full h-full">
-            <PhoneCanvas />
+              {/* Email */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider">
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={this.handleChange}
+                  required
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white placeholder:text-purple-300/40 text-sm outline-none focus:border-purple-500 focus:bg-[rgba(255,255,255,0.08)] transition-all duration-200"
+                />
+              </div>
+
+              {/* Message */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider">
+                  Message
+                </label>
+                <textarea
+                  rows={6}
+                  name="message"
+                  value={form.message}
+                  onChange={this.handleChange}
+                  required
+                  placeholder="What would you like to say?"
+                  className="w-full px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white placeholder:text-purple-300/40 text-sm outline-none focus:border-purple-500 focus:bg-[rgba(255,255,255,0.08)] transition-all duration-200 resize-none"
+                />
+              </div>
+
+              {/* Success message */}
+              {sent && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Message sent! I'll get back to you soon.
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-1 w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-700/30 transition-all duration-200 hover:shadow-purple-500/50 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Sending...
+                  </span>
+                ) : "Send Message"}
+              </button>
+
+            </form>
           </div>
         </motion.div>
+
+        {/* Phone 3D */}
+        <motion.div
+          variants={slideIn('right', 'tween', 0.2, 1)}
+          className="xl:flex-1 xl:h-auto md:h-[550px] h-[350px] relative flex items-center justify-center"
+        >
+          <PhoneCanvas />
+        </motion.div>
+
       </div>
     );
   }
