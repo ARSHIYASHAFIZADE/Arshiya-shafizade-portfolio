@@ -135,13 +135,15 @@ const Contact = () => (
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.5 }}
           viewport={{ once: true }}
-          className="mt-2 text-slate-500 text-[13px] font-mono flex items-center gap-2"
+          className="mt-4 px-4 py-2.5 rounded-full text-[11.5px] font-mono font-medium w-fit"
+          style={{
+            color: "#a78bfa",
+            background: "rgba(167,139,250,0.08)",
+            border: "1px solid rgba(167,139,250,0.22)",
+            letterSpacing: "0.06em",
+          }}
         >
-          <span
-            className="w-2 h-2 rounded-full bg-emerald-400 inline-block flex-shrink-0"
-            style={{ boxShadow: "0 0 6px #4ade80" }}
-          />
-          Available for full-time roles and freelance projects
+          Available for full-time roles &amp; freelance projects
         </motion.p>
       </div>
 
