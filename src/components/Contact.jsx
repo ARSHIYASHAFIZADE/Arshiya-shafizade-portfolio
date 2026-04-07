@@ -151,7 +151,7 @@ const Contact = () => (
         whileInView={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
         viewport={{ once: true }}
-        className="xl:flex-1 h-[400px] xl:h-[560px]"
+        className="xl:flex-1 h-[560px] xl:h-[700px]"
       >
         <AstronautCanvas />
       </motion.div>

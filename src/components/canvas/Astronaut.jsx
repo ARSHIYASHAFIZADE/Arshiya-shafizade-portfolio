@@ -27,7 +27,7 @@ const AstronautModel = () => {
 const AstronautCanvas = () => (
   <ErrorBoundary fallback={<div />}>
     <Canvas
-      camera={{ position: [0, 0, 5], fov: 42 }}
+      camera={{ position: [0, 0, 6], fov: 55 }}
       gl={{ antialias: true }}
       dpr={[1, 2]}
     >
