@@ -6,7 +6,7 @@
 
 **Full Stack Developer · AI Engineer · 3D Web Enthusiast**
 
-> Interactive 3D personal portfolio showcasing full-stack and AI work. Features rotating GLTF avatar, 3D astronaut character, data visualization carousel, animated skill bars, and Glassmorphic design. Fully responsive with WebGL fallbacks for unsupported devices.
+> Interactive 3D personal portfolio showcasing full-stack and AI work. Features rotating GLTF avatar, 3D astronaut character, animated skill bars, and Glassmorphic design. Fully responsive with WebGL fallbacks for unsupported devices.
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## Overview
 
-A 3D interactive personal portfolio built with React, Three.js, and Framer Motion. Features a rotating GLTF avatar in the hero section, a 3D astronaut character in the contact area, an animated data visualization carousel, project cards with tilt effects, and skill bars with count-up animations. Built with glassmorphic UI design and optimized for all devices.
+A 3D interactive personal portfolio built with React, Three.js, and Framer Motion. Features a rotating GLTF avatar in the hero section, a 3D astronaut character in the contact area, project cards with tilt effects, and skill bars with count-up animations. Built with glassmorphic UI design and optimized for all devices.
 
 ---
 
@@ -31,7 +31,6 @@ A 3D interactive personal portfolio built with React, Three.js, and Framer Motio
 
 - **3D Avatar** — rotating GLTF character model in hero section with React Three Fiber and cinematic multi-source lighting
 - **3D Astronaut** — interactive 3D astronaut character displayed in contact section with environment lighting
-- **Data Visualization Carousel** — 3D rotating carousel showcasing data visualizations with swipe and click navigation
 - **Project Cards** — tilt-enabled project showcase cards with smooth hover lift animations
 - **Experience Section** — work timeline with animated skill bars and count-up statistics
 - **Tech Stack Grid** — comprehensive technology icon grid reflecting full-stack expertise
@@ -134,7 +133,6 @@ Arshiya-shafizade-portfolio/
 │   │   │   └── Stars.jsx     WebGL star field background
 │   │   ├── About.jsx
 │   │   ├── Contact.jsx       Contact section with social cards + astronaut
-│   │   ├── DV.jsx            Data Visualization carousel
 │   │   ├── Experience.jsx    Work timeline with skill bars
 │   │   ├── Feedbacks.jsx     Education & testimonials
 │   │   ├── Hero.jsx          Hero intro section
