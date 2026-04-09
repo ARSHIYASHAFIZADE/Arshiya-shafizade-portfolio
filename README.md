@@ -6,6 +6,10 @@
 
 **Full Stack Developer · AI Engineer · 3D Web Enthusiast**
 
+> Interactive 3D portfolio built with React, Three.js & TypeScript. Features responsive design, LLM integration, and real-time 3D avatar. Cross-browser compatible (Chrome, Firefox) on all devices.
+
+---
+
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Site-6366f1?style=for-the-badge&logo=vercel&logoColor=white)](https://arshiyashafizade.github.io/Arshiyashafizade-portfolio)
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
 [![Three.js](https://img.shields.io/badge/Three.js-0.171.0-black?style=for-the-badge&logo=threedotjs&logoColor=white)](https://threejs.org)
