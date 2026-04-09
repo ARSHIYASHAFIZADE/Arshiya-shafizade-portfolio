@@ -6,7 +6,7 @@
 
 **Full Stack Developer · AI Engineer · 3D Web Enthusiast**
 
-> Interactive 3D personal portfolio built with React, Three.js & TypeScript. Features rotating 3D avatar, Framer Motion animations, live project previews, and Glassmorphic design. Fully responsive with cross-browser compatibility.
+> Interactive 3D personal portfolio showcasing full-stack and AI work. Features rotating GLTF avatar, 3D astronaut character, data visualization carousel, animated skill bars, and Glassmorphic design. Fully responsive with WebGL fallbacks for unsupported devices.
 
 ---
 
@@ -23,29 +23,25 @@
 
 ## Overview
 
-A 3D interactive personal portfolio built from scratch with React, Three.js, and Framer Motion. Features a rotating GLTF avatar, an animated phone model, live project screenshots, a swipeable experience carousel, and a working contact form — all wrapped in a deep-space glassmorphic design.
-
----
-
-## Screenshots
-
-| Hero | Projects | Contact |
-|------|----------|---------|
-| 3D rotating avatar + animated intro | Tilt cards with live site previews | Glassmorphic form + 3D phone |
+A 3D interactive personal portfolio built with React, Three.js, and Framer Motion. Features a rotating GLTF avatar in the hero section, a 3D astronaut character in the contact area, an animated data visualization carousel, project cards with tilt effects, and skill bars with count-up animations. Built with glassmorphic UI design and optimized for all devices.
 
 ---
 
 ## Features
 
-- **3D Avatar** — rotating GLTF character model rendered with React Three Fiber, with multi-source lighting
-- **Animated Phone** — floating, slow-rotating phone model in the contact section with city environment lighting
-- **Live Project Previews** — project cards pull real-time screenshots of each live site via `image.thum.io`
-- **Experience Carousel** — Swiper carousel with equal-height cards, smooth hover lift animations, and autoplay
-- **Skills Grid** — tech icon grid reflecting the full stack across all projects
-- **3D Phone Model** — floating, slow-rotating phone in contact section with cinematic lighting
-- **Star Field** — procedurally generated 5,000-point WebGL star background
-- **Error Boundaries** — all Three.js canvases wrapped so the page never crashes on WebGL failure
-- **Fully Responsive** — mobile-first layout with Tailwind breakpoints
+- **3D Avatar** — rotating GLTF character model in hero section with React Three Fiber and cinematic multi-source lighting
+- **3D Astronaut** — interactive 3D astronaut character displayed in contact section with environment lighting
+- **Data Visualization Carousel** — 3D rotating carousel showcasing data visualizations with swipe and click navigation
+- **Project Cards** — tilt-enabled project showcase cards with smooth hover lift animations
+- **Experience Section** — work timeline with animated skill bars and count-up statistics
+- **Tech Stack Grid** — comprehensive technology icon grid reflecting full-stack expertise
+- **Social Contact Links** — GitHub, LinkedIn, Email, and Phone contact cards with hover effects
+- **Glassmorphic Design** — modern frosted glass UI with backdrop blur effects throughout
+- **Star Field** — procedurally generated WebGL star background animation
+- **Error Boundaries** — all Three.js canvases wrapped with error handling to prevent crashes
+- **WebGL Fallback** — graceful degradation with user-friendly message on unsupported devices
+- **Fully Responsive** — mobile-first layout with Tailwind breakpoints and adaptive 3D model scaling
+- **Smooth Animations** — Framer Motion animations for scroll-triggered effects and page transitions
 
 ---
 
@@ -54,8 +50,9 @@ A 3D interactive personal portfolio built from scratch with React, Three.js, and
 ### Core
 
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/Vite-5.4.10-646CFF?style=flat-square&logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-3.4.14-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5.4.10-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![React Router](https://img.shields.io/badge/React_Router-6.28.0-CA4245?style=flat-square&logo=reactrouter&logoColor=white)
 
 ### 3D & Animation
@@ -88,14 +85,14 @@ A 3D interactive personal portfolio built from scratch with React, Three.js, and
 
 ```bash
 # 1. Clone
-git clone https://github.com/ARSHIYASHAFIZADE/Arshiyashafizade-portfolio.git
-cd Arshiyashafizade-portfolio
+git clone https://github.com/ARSHIYASHAFIZADE/-Arshiya-shafizade-portfolio.git
+cd Arshiya-shafizade-portfolio
 
 # 2. Install dependencies
 npm install
 
 # 3. Add environment variables
-cp .env.example .env   # then fill in your keys
+cp .env.example .env
 
 # 4. Start dev server
 npm run dev
@@ -124,36 +121,39 @@ See `.env.example` for configuration options. No sensitive keys required for bas
 ## Project Structure
 
 ```
-Arshiyashafizade-portfolio/
+Arshiya-shafizade-portfolio/
 ├── public/
 │   ├── Avatar/               GLTF avatar model + textures
-│   └── Phone/                GLTF phone model + textures
+│   └── Astronaut/            GLTF astronaut model + textures
 ├── src/
 │   ├── assets/               Images, icons, tech logos
 │   ├── components/
 │   │   ├── canvas/
-│   │   │   ├── Avatar.jsx    Rotating 3D avatar (hero)
-│   │   │   ├── Phone.jsx     Floating 3D phone (contact)
+│   │   │   ├── Avatar.jsx    3D avatar in hero section
+│   │   │   ├── Astronaut.jsx 3D astronaut in contact section
 │   │   │   └── Stars.jsx     WebGL star field background
 │   │   ├── About.jsx
-│   │   ├── Contact.jsx       Contact section with 3D phone model
-│   │   ├── Experience.jsx    Swipeable project carousel
+│   │   ├── Contact.jsx       Contact section with social cards + astronaut
+│   │   ├── DV.jsx            Data Visualization carousel
+│   │   ├── Experience.jsx    Work timeline with skill bars
 │   │   ├── Feedbacks.jsx     Education & testimonials
-│   │   ├── Hero.jsx
+│   │   ├── Hero.jsx          Hero intro section
 │   │   ├── Navbar.jsx
-│   │   ├── Tech.jsx          Skills icon grid
-│   │   └── Works.jsx         Project cards
+│   │   ├── Tech.jsx          Technology skills grid
+│   │   ├── Works.jsx         Project cards showcase
+│   │   └── Loader.jsx        Canvas loading spinner
 │   ├── constants/
-│   │   └── index.js          All site data (projects, skills, nav)
+│   │   └── index.js          Site data (projects, skills, experience)
 │   ├── hoc/
-│   │   └── SectionWrapper.jsx  Scroll-triggered section wrapper
+│   │   └── SectionWrapper.jsx  Scroll-triggered section animations
 │   ├── utils/
 │   │   └── motion.js         Framer Motion animation variants
 │   ├── styles.js
+│   ├── index.css
 │   ├── App.jsx
 │   └── main.jsx
-├── .env                      Environment variables (not committed)
-├── vite.config.js
+├── .env.example              Environment variables template
+├── vite.config.js            Vite configuration
 ├── tailwind.config.cjs
 └── package.json
 ```
@@ -175,7 +175,7 @@ Arshiyashafizade-portfolio/
     <td align="center" width="25%">
       <strong>The Neon Canopy</strong><br/>
       <sub>Three.js · Next.js · Framer Motion · TypeScript</sub><br/><br/>
-      Immersive 3D bioluminescent jungle with procedural audio and 7 post-processing effects<br/><br/>
+      Immersive 3D bioluminescent jungle with procedural audio and post-processing<br/><br/>
       <a href="https://my-jungle-seven.vercel.app">
         <img src="https://img.shields.io/badge/Live-Visit-6366f1?style=flat-square&logo=vercel" />
       </a>
@@ -191,7 +191,7 @@ Arshiyashafizade-portfolio/
     <td align="center" width="25%">
       <strong>SAM AI</strong><br/>
       <sub>Next.js · Flask · scikit-learn · Mistral-7B</sub><br/><br/>
-      AI clinical diagnostics platform with 5 ML models and a medical Q&A chatbot<br/><br/>
+      AI clinical diagnostics platform with 5 ML models and medical Q&A chatbot<br/><br/>
       <a href="https://frontend-production-0b91.up.railway.app">
         <img src="https://img.shields.io/badge/Live-Visit-6366f1?style=flat-square&logo=railway" />
       </a>
