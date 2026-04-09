@@ -6,7 +6,7 @@
 
 **Full Stack Developer · AI Engineer · 3D Web Enthusiast**
 
-> Interactive 3D portfolio built with React, Three.js & TypeScript. Features responsive design, LLM integration, and real-time 3D avatar. Cross-browser compatible (Chrome, Firefox) on all devices.
+> Interactive 3D personal portfolio built with React, Three.js & TypeScript. Features rotating 3D avatar, Framer Motion animations, live project previews, and Glassmorphic design. Fully responsive with cross-browser compatibility.
 
 ---
 
@@ -42,7 +42,7 @@ A 3D interactive personal portfolio built from scratch with React, Three.js, and
 - **Live Project Previews** — project cards pull real-time screenshots of each live site via `image.thum.io`
 - **Experience Carousel** — Swiper carousel with equal-height cards, smooth hover lift animations, and autoplay
 - **Skills Grid** — tech icon grid reflecting the full stack across all projects
-- **Contact Form** — glassmorphic form with send spinner, success banner, and EmailJS integration
+- **3D Phone Model** — floating, slow-rotating phone in contact section with cinematic lighting
 - **Star Field** — procedurally generated 5,000-point WebGL star background
 - **Error Boundaries** — all Three.js canvases wrapped so the page never crashes on WebGL failure
 - **Fully Responsive** — mobile-first layout with Tailwind breakpoints
@@ -70,10 +70,6 @@ A 3D interactive personal portfolio built from scratch with React, Three.js, and
 ![Swiper](https://img.shields.io/badge/Swiper-11.1.15-6332F6?style=flat-square&logo=swiper&logoColor=white)
 ![react-tilt](https://img.shields.io/badge/react--tilt-1.0.2-gray?style=flat-square)
 ![react-error-boundary](https://img.shields.io/badge/react--error--boundary-5.0.0-gray?style=flat-square)
-
-### Email
-
-![EmailJS](https://img.shields.io/badge/EmailJS-4.4.1-F7C500?style=flat-square&logo=gmail&logoColor=black)
 
 ### Deployment
 
@@ -109,14 +105,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Environment Variables
 
-Create a `.env` file in the root:
-
-```env
-VITE_APP_EMAILJS_SERVICE_ID=your_service_id
-VITE_APP_EMAILJS_PUBLIC_KEY=your_public_key
-```
-
-Get these from [emailjs.com](https://emailjs.com). The contact form uses template ID `template_7rkkl05` — update it in `src/components/Contact.jsx` if needed.
+See `.env.example` for configuration options. No sensitive keys required for basic functionality.
 
 ---
 
@@ -147,7 +136,7 @@ Arshiyashafizade-portfolio/
 │   │   │   ├── Phone.jsx     Floating 3D phone (contact)
 │   │   │   └── Stars.jsx     WebGL star field background
 │   │   ├── About.jsx
-│   │   ├── Contact.jsx       EmailJS contact form
+│   │   ├── Contact.jsx       Contact section with 3D phone model
 │   │   ├── Experience.jsx    Swipeable project carousel
 │   │   ├── Feedbacks.jsx     Education & testimonials
 │   │   ├── Hero.jsx
