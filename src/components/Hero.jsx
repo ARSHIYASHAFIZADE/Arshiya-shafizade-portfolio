@@ -5,20 +5,20 @@ import { AvatarCanvas} from "./canvas";
 
 const Hero = () => {
   return (
-    <section className={`relative w-full h-screen mx-auto`}>
+    <section className={`relative w-full h-screen mx-auto overflow-hidden`}>
       <div
-        className={`absolute inset-0 top-[120px] max-w-7xl mx-auto ${styles.paddingX} flex flex-row items-start gap-5 ml-0 z-20`}
+        className={`absolute inset-0 top-[120px] max-w-7xl mx-auto ${styles.paddingX} flex flex-row items-start gap-5 ml-0 z-20 pointer-events-none`}
       >
         <div className="flex flex-col justify-center items-center mt-5">
           <div className="w-5 h-5 rounded-full bg-[#bbd3ff]" />
           <div className="w-1 sm:h-80 h-40 bg-[#bbd3ff]" />
         </div>
 
-        <div className="ml-0 pl-5">
-          <h1 className={`${styles.heroHeadText} text-white `}>
+        <div className="ml-0 pl-5 pr-4 max-w-md sm:max-w-lg md:max-w-xl pointer-events-auto">
+          <h1 className={`${styles.heroHeadText} text-white break-words`}>
             Hi, I'm <span className="text-[#92f8f3]">Arshiya</span>
           </h1>
-          <p className={`${styles.heroSubText} mt-2 text-white-100`}>
+          <p className={`${styles.heroSubText} mt-2 text-white-100 break-words`}>
             Full Stack Engineer &amp; AI Developer
           </p>
 

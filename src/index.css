@@ -118,6 +118,109 @@
   overflow: visible !important;
 }
 
+/* Responsive typography with clamp for smooth scaling */
+.clamp-hero {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  line-height: 1.2;
+}
+
+.clamp-sub {
+  font-size: clamp(1rem, 4vw, 1.875rem);
+  line-height: 1.6;
+}
+
+/* Prevent text overflow and ensure proper wrapping */
+.word-wrap {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  white-space: normal;
+}
+
+/* Firefox-specific fixes for text rendering */
+@-moz-document url-prefix() {
+  .clamp-hero,
+  .clamp-sub {
+    text-rendering: geometricPrecision;
+  }
+}
+
+/* Safari/iOS text sizing adjustments */
+@supports (-webkit-appearance: none) {
+  .clamp-hero {
+    -webkit-text-size-adjust: none;
+  }
+  .clamp-sub {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Cross-browser viewport and media query fixes */
+@media (min-width: 320px) and (max-width: 480px) {
+  /* Mobile phones */
+  .clamp-hero {
+    font-size: clamp(1.75rem, 6vw, 2.5rem);
+  }
+  .clamp-sub {
+    font-size: clamp(0.875rem, 3.5vw, 1rem);
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  /* Tablets */
+  .clamp-hero {
+    font-size: clamp(2.25rem, 6.5vw, 3.5rem);
+  }
+  .clamp-sub {
+    font-size: clamp(1rem, 4vw, 1.5rem);
+  }
+}
+
+@media (min-width: 769px) {
+  /* Desktop */
+  .clamp-hero {
+    font-size: clamp(3rem, 7vw, 5rem);
+  }
+  .clamp-sub {
+    font-size: clamp(1.25rem, 4.5vw, 1.875rem);
+  }
+}
+
+/* Firefox-specific fixes */
+@-moz-document url-prefix() {
+  body {
+    text-rendering: optimizeLegibility;
+  }
+
+  .word-wrap {
+    word-spacing: 0.1em;
+  }
+}
+
+/* Chrome/Edge specific optimizations */
+@supports (backdrop-filter: blur(1px)) {
+  .clamp-hero,
+  .clamp-sub {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Ensure consistent line height across browsers */
+body {
+  -webkit-line-clamp: unset;
+  line-height: 1.5;
+}
+
+/* Fix for 3D transforms on different browsers */
+@supports (transform: rotateX(0deg)) {
+  .preserve-3d {
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
+
 /* canvas- styles */
 .canvas-loader {
   font-size: 10px;

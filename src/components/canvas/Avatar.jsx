@@ -5,19 +5,42 @@ import { ErrorBoundary } from "react-error-boundary";
 import CanvasLoader from "../Loader";
 import * as THREE from "three";
 
+// Fallback component when WebGL is not available
+const WebGLFallback = () => (
+  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-lg">
+    <div className="text-center px-8 py-12">
+      <div className="text-6xl mb-4 opacity-50">🎨</div>
+      <p className="text-white/70 text-sm max-w-xs leading-relaxed">
+        3D graphics not supported on this device. Please try on a computer with WebGL support.
+      </p>
+    </div>
+  </div>
+);
+
+// Canvas error fallback
+const CanvasErrorFallback = ({ error, resetErrorBoundary }) => (
+  <WebGLFallback />
+);
+
 const Computers = ({ isMobile }) => {
   const { scene } = useGLTF("./Avatar/6756e17a1aa3af1c627b3bec.glb");
   const modelRef = useRef();
 
   // Check for model loading errors
   if (!scene) {
-    console.error("Failed to load model.");
+    console.warn("Avatar model failed to load, using fallback.");
     return null;
   }
 
   scene.traverse((node) => {
-    if (node.isMesh && node.material.map) {
-      node.material.map.encoding = THREE.sRGBEncoding;
+    if (node.isMesh && node.material && node.material.map) {
+      // Three.js r152+: colorSpace instead of encoding
+      if (node.material.map.colorSpace) {
+        node.material.map.colorSpace = THREE.SRGBColorSpace;
+      } else if (THREE.sRGBEncoding) {
+        // Fallback for older Three.js versions
+        node.material.map.encoding = THREE.sRGBEncoding;
+      }
     }
   });
 
@@ -52,8 +75,17 @@ const Computers = ({ isMobile }) => {
 
 const ComputersCanvas = () => {
   const [isMobile, setIsMobile] = useState(false);
+  const [webglSupported, setWebglSupported] = useState(true);
 
   useEffect(() => {
+    // Check WebGL support
+    const canvas = document.createElement("canvas");
+    const supported = !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl") || canvas.getContext("webgl2"))
+    );
+    setWebglSupported(supported);
+
     const mediaQuery = window.matchMedia("(min-width: 768px)");
     setIsMobile(mediaQuery.matches);
 
@@ -65,15 +97,27 @@ const ComputersCanvas = () => {
     };
   }, []);
 
+  // Show fallback if WebGL is not supported
+  if (!webglSupported) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center z-10">
+        <WebGLFallback />
+      </div>
+    );
+  }
+
   return (
-    <ErrorBoundary fallback={null}>
+    <ErrorBoundary FallbackComponent={CanvasErrorFallback}>
       <Canvas
         frameloop="always"
         shadows
         dpr={[1, 2]}
         camera={{ position: [10, 5, 10], fov: 35 }}
-        gl={{ preserveDrawingBuffer: true }}
+        gl={{ preserveDrawingBuffer: true, antialias: true }}
         className="z-10"
+        onCreated={({ gl }) => {
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }}
       >
         {/* Boosted lighting so the model isn't too dark */}
         <ambientLight intensity={2.5} />
