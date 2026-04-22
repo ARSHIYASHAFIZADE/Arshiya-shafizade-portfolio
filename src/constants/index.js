@@ -253,7 +253,7 @@ const projects = [
       { name: "Python" },
       { name: "Docker" },
     ],
-    image: "https://image.thum.io/get/width/1280/crop/720/noanimate/https://github.com/ARSHIYASHAFIZADE/ALF",
+    image: "/alf.png",
     icon: "https://cdn.simpleicons.org/github/ffffff",
     source_code_link: "https://github.com/ARSHIYASHAFIZADE/ALF",
   },
