@@ -69,6 +69,7 @@ const technologies = [
   { name: "ArgoCD", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/argocd/argocd-original.svg" },
   { name: "Git", icon: git },
   { name: "GitHub", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg", invert: true },
+  { name: "Claude Code", icon: "https://avatars.githubusercontent.com/u/76263028?s=200&v=4" },
 ];
 
 const workExperiences = [
@@ -162,10 +163,34 @@ const experiences = [
 const testimonials = [
   {
     testimonial:
-      "Research and Publications:Co-authored research on Diagnosis of Breast Cancer Tumor Type, using AI to enhance diagnostic accuracy through a fuzzy combination of regression methods.",
+      "Certified in Claude 101 — foundational course covering Claude AI capabilities, prompt engineering, and effective human-AI collaboration patterns.",
+    name: "Claude 101",
+    designation: "Certificate of Completion",
+    company: "Anthropic",
+    image: "https://avatars.githubusercontent.com/u/76263028?s=200&v=4",
+  },
+  {
+    testimonial:
+      "Certified in Claude Code 101 — fundamentals of AI-assisted software development using Claude Code CLI, agentic tool use, and automated engineering workflows.",
+    name: "Claude Code 101",
+    designation: "Certificate of Completion",
+    company: "Anthropic",
+    image: "https://avatars.githubusercontent.com/u/76263028?s=200&v=4",
+  },
+  {
+    testimonial:
+      "Certified in Claude Code in Action — advanced practitioner course applying Claude Code to real engineering workflows, multi-step automation, and production codebases.",
+    name: "Claude Code in Action",
+    designation: "Certificate of Completion",
+    company: "Anthropic",
+    image: "https://avatars.githubusercontent.com/u/76263028?s=200&v=4",
+  },
+  {
+    testimonial:
+      "Research and Publications: Co-authored research on Diagnosis of Breast Cancer Tumor Type, using AI to enhance diagnostic accuracy through a fuzzy combination of regression methods.",
     name: "Research and Publications",
-    designation: "Developer&researcher",
-    company: "SamAi",
+    designation: "Developer & Researcher",
+    company: "SAM AI",
     image: image,
   },
   {
