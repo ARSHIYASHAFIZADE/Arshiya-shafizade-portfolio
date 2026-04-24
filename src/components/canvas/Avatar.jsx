@@ -141,7 +141,12 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     }
 
     // Lip-sync via mouthOpen morph when speaking (viseme > 0)
-    const mouthTarget = viseme > 0 ? 0.3 + Math.abs(Math.sin(t * 14)) * 0.5 : 0;
+    // Layered noise instead of pure sine so it doesn't look like a fish
+    const speechNoise =
+      Math.sin(t * 11) * 0.5 +
+      Math.sin(t * 17.3 + 1.2) * 0.3 +
+      Math.sin(t * 6.7 + 0.4) * 0.2;
+    const mouthTarget = viseme > 0 ? Math.max(0, 0.08 + speechNoise * 0.12) : 0;
     // Blink via morph if available (eyesClosed), else skip
     blinkTimer.current.next -= 1 / 60;
     let blinkValue = 0;
@@ -160,7 +165,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
       const dict = mesh.morphTargetDictionary;
       const infl = mesh.morphTargetInfluences;
       if (dict.mouthOpen !== undefined) {
-        infl[dict.mouthOpen] = THREE.MathUtils.lerp(infl[dict.mouthOpen], mouthTarget, 0.4);
+        infl[dict.mouthOpen] = THREE.MathUtils.lerp(infl[dict.mouthOpen], mouthTarget, 0.25);
       }
       if (dict.mouthSmile !== undefined && viseme === 0) {
         infl[dict.mouthSmile] = THREE.MathUtils.lerp(infl[dict.mouthSmile], 0.15, 0.02);
