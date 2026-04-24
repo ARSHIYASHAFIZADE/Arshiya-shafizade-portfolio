@@ -124,7 +124,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
 
       upperArm.rotation.x = 1.57;
       upperArm.rotation.y = 0;
-      upperArm.rotation.z = 0.05 * direction;
+      upperArm.rotation.z = 0.2 * direction;
 
       if (forearm) {
         forearm.rotation.x = 0;
