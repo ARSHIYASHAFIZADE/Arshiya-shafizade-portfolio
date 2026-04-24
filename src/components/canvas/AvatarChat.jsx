@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 // Voice recognition hook
 const useSpeechRecognition = () => {
@@ -307,33 +307,6 @@ const AvatarChat = ({ onVisemeUpdate }) => {
           {isSpeaking && "Speaking..."}
           {!isListening && !isSpeaking && "Tap to talk"}
         </div>
-
-        {/* Visual sound wave when listening */}
-        <AnimatePresence>
-          {(isListening || isSpeaking) && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              className="flex items-end gap-0.5 h-6"
-            >
-              {[1,2,3,4,5].map((i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    height: [8, 16, 8, 20, 8],
-                  }}
-                  transition={{
-                    duration: 0.8,
-                    repeat: Infinity,
-                    delay: i * 0.1,
-                  }}
-                  className="w-0.5 bg-gradient-to-t from-purple-400 to-cyan-400 rounded-full"
-                />
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* Transcript/AI response - positioned above button */}
