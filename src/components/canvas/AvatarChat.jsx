@@ -274,7 +274,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   }, [isSpeaking, onVisemeUpdate]);
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md">
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -286,7 +286,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
           whileTap={{ scale: 0.95 }}
           onClick={handleMicClick}
           className={`
-            w-14 h-14 rounded-full flex items-center justify-center
+            w-16 h-16 rounded-full flex items-center justify-center
             ${isListening || isSpeaking
               ? "bg-white/10 border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
               : "bg-white/5 border-white/10 hover:bg-white/10"

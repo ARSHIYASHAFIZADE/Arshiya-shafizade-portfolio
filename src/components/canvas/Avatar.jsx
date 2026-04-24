@@ -138,7 +138,7 @@ const ComputersCanvas = () => {
         shadows
         dpr={[1, 2]}
         camera={{
-          position: isMobile ? [0, 0.5, 6] : [0, 0.3, 5.5],
+          position: isMobile ? [0, 0.2, 6] : [0, 0, 5],
           fov: isMobile ? 55 : 50
         }}
         gl={{ preserveDrawingBuffer: true, antialias: true }}
