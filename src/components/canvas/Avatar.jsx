@@ -50,7 +50,7 @@ const CanvasErrorFallback = ({ error, resetErrorBoundary }) => (
 );
 
 const Computers = ({ isMobile, viseme, onModelLoaded }) => {
-  const { scene } = useGLTF("./Avatar/avaturn.glb");
+  const { scene, animations } = useGLTF("./Avatar/model.glb");
   const { mouse } = useThree();
   const modelRef = useRef();
   const headBone = useRef(null);
@@ -67,6 +67,8 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   const jawBone = useRef(null);
   const morphMeshes = useRef([]);
   const initialRotations = useRef(new Map());
+  const [actionPlayed, setActionPlayed] = useState(false);
+  const mixerRef = useRef(null);
   const blinkTimer = useRef({ next: 2 + Math.random() * 3, progress: 0 });
 
   useEffect(() => {
@@ -146,7 +148,29 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     setArmPose(leftArmBone.current, leftForearmBone.current, leftHandBone.current, true);
     setArmPose(rightArmBone.current, rightForearmBone.current, rightHandBone.current, false);
 
-  }, [scene]);
+    if (animations && animations.length > 0) {
+      const mixer = new THREE.AnimationMixer(scene);
+      mixerRef.current = mixer;
+
+      const action = animations[0];
+      const clip = mixer.clipAction(action);
+      clip.setLoop(THREE.LoopOnce);
+      clip.clampWhenFinished = true;
+
+      clip.play();
+
+      const onFinished = () => {
+        onModelLoaded?.();
+        setActionPlayed(true);
+      };
+
+      mixer.addEventListener('finished', onFinished);
+      return () => mixer.removeEventListener('finished', onFinished);
+    } else {
+      onModelLoaded?.();
+      setActionPlayed(true);
+    }
+  }, [scene, animations]);
 
   if (!scene) return null;
 
@@ -157,82 +181,86 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   useEffect(() => { visemeRef.current = viseme; }, [viseme]);
 
   useFrame(({ clock }) => {
+    if (mixerRef.current && !actionPlayed) {
+      mixerRef.current.update(clock.getDelta());
+    }
     const t = clock.getElapsedTime();
 
-    if (spineBone.current) {
-      const init = initialRotations.current.get(spineBone.current.uuid);
-      if (init) {
-        spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.012;
-        spineBone.current.rotation.z = init.z + Math.sin(t * 0.6) * 0.008;
+    if (actionPlayed) {
+      if (spineBone.current) {
+        const init = initialRotations.current.get(spineBone.current.uuid);
+        if (init) {
+          spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.012;
+          spineBone.current.rotation.z = init.z + Math.sin(t * 0.6) * 0.008;
+        }
       }
-    }
 
-    const targetYaw = mouse.x * 0.4 + Math.sin(t * 0.4) * 0.04;
-    const targetPitch = -mouse.y * 0.25 + Math.sin(t * 0.7) * 0.02;
+      const targetYaw = mouse.x * 0.4 + Math.sin(t * 0.4) * 0.04;
+      const targetPitch = -mouse.y * 0.25 + Math.sin(t * 0.7) * 0.02;
 
-    if (neckBone.current) {
-      const init = initialRotations.current.get(neckBone.current.uuid);
-      if (init) {
-        neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.35, 0.06);
-        neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.35, 0.06);
+      if (neckBone.current) {
+        const init = initialRotations.current.get(neckBone.current.uuid);
+        if (init) {
+          neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.35, 0.06);
+          neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.35, 0.06);
+        }
       }
-    }
 
-    if (headBone.current) {
-      const init = initialRotations.current.get(headBone.current.uuid);
-      const currentViseme = visemeRef.current;
-      const speakBob = currentViseme > 0.01 ? Math.sin(t * 10) * currentViseme * 0.025 : 0;
-      const speakTilt = currentViseme > 0.01 ? Math.sin(t * 6) * currentViseme * 0.02 : 0;
+      if (headBone.current) {
+        const init = initialRotations.current.get(headBone.current.uuid);
+        const currentViseme = visemeRef.current;
+        const speakBob = currentViseme > 0.01 ? Math.sin(t * 10) * currentViseme * 0.025 : 0;
+        const speakTilt = currentViseme > 0.01 ? Math.sin(t * 6) * currentViseme * 0.02 : 0;
 
-      headBone.current.rotation.y = THREE.MathUtils.lerp(
-        headBone.current.rotation.y,
-        init.y + targetYaw * 0.55 + speakTilt,
-        0.08
-      );
-      headBone.current.rotation.x = THREE.MathUtils.lerp(
-        headBone.current.rotation.x,
-        init.x + targetPitch * 0.55 + speakBob,
-        0.08
-      );
-    }
+        headBone.current.rotation.y = THREE.MathUtils.lerp(
+          headBone.current.rotation.y,
+          init.y + targetYaw * 0.55 + speakTilt,
+          0.08
+        );
+        headBone.current.rotation.x = THREE.MathUtils.lerp(
+          headBone.current.rotation.x,
+          init.x + targetPitch * 0.55 + speakBob,
+          0.08
+        );
+      }
 
-    if (jawBone.current) {
-      const init = initialRotations.current.get(jawBone.current.uuid);
-      const currentViseme = visemeRef.current;
-      const target = currentViseme > 0.01 ? init.x + currentViseme * 0.3 : init.x;
-      jawBone.current.rotation.x = THREE.MathUtils.lerp(jawBone.current.rotation.x, target, 0.35);
-    }
+      if (jawBone.current) {
+        const init = initialRotations.current.get(jawBone.current.uuid);
+        const currentViseme = visemeRef.current;
+        const target = currentViseme > 0.01 ? init.x + currentViseme * 0.3 : init.x;
+        jawBone.current.rotation.x = THREE.MathUtils.lerp(jawBone.current.rotation.x, target, 0.35);
+      }
 
-    const gentleSway = (bone, init, offsetA, offsetB) => {
-      if (!bone || !init) return;
+      const gentleSway = (bone, init, offsetA, offsetB) => {
+        if (!bone || !init) return;
       bone.rotation.z = init.z + Math.sin(t * offsetA) * 0.01;
       bone.rotation.x = init.x + Math.sin(t * offsetB) * 0.008;
     };
 
-    if (leftArmBone.current) {
-      gentleSway(leftArmBone.current, initialRotations.current.get(leftArmBone.current.uuid), 0.7, 1.1);
-    }
-    if (rightArmBone.current) {
-      gentleSway(rightArmBone.current, initialRotations.current.get(rightArmBone.current.uuid), 0.8, 1.15);
-    }
-
-    blinkTimer.current.next -= 1 / 60;
-    let blinkValue = 0;
-    if (blinkTimer.current.next <= 0) {
-      blinkTimer.current.progress += 1 / 60;
-      blinkValue = blinkTimer.current.progress < 0.07 ? blinkTimer.current.progress / 0.07
-                 : blinkTimer.current.progress < 0.14 ? 1 - (blinkTimer.current.progress - 0.07) / 0.07
-                 : 0;
-      if (blinkTimer.current.progress >= 0.14) {
-        blinkTimer.current.progress = 0;
-        blinkTimer.current.next = 2.5 + Math.random() * 3.5;
+      if (leftArmBone.current) {
+        gentleSway(leftArmBone.current, initialRotations.current.get(leftArmBone.current.uuid), 0.7, 1.1);
       }
-    }
+      if (rightArmBone.current) {
+        gentleSway(rightArmBone.current, initialRotations.current.get(rightArmBone.current.uuid), 0.8, 1.15);
+      }
 
-    const currentViseme = visemeRef.current;
-    const baseMouth = currentViseme > 0.01 ? currentViseme * 0.65 : 0;
-    const microOpen = currentViseme > 0.05 ? Math.sin(t * 18) * currentViseme * 0.12 : 0;
-    const mouthTarget = Math.max(0, Math.min(0.85, baseMouth + microOpen));
+      blinkTimer.current.next -= 1 / 60;
+      let blinkValue = 0;
+      if (blinkTimer.current.next <= 0) {
+        blinkTimer.current.progress += 1 / 60;
+        blinkValue = blinkTimer.current.progress < 0.07 ? blinkTimer.current.progress / 0.07
+                   : blinkTimer.current.progress < 0.14 ? 1 - (blinkTimer.current.progress - 0.07) / 0.07
+                   : 0;
+        if (blinkTimer.current.progress >= 0.14) {
+          blinkTimer.current.progress = 0;
+          blinkTimer.current.next = 2.5 + Math.random() * 3.5;
+        }
+      }
+
+      const currentViseme = visemeRef.current;
+      const baseMouth = currentViseme > 0.01 ? currentViseme * 0.65 : 0;
+      const microOpen = currentViseme > 0.05 ? Math.sin(t * 18) * currentViseme * 0.12 : 0;
+      const mouthTarget = Math.max(0, Math.min(0.85, baseMouth + microOpen));
 
     for (const mesh of morphMeshes.current) {
       const dict = mesh.morphTargetDictionary;
@@ -263,6 +291,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
       if (dict.eyesClosed !== undefined) infl[dict.eyesClosed] = blinkValue;
       if (dict.eyeBlinkLeft !== undefined) infl[dict.eyeBlinkLeft] = blinkValue;
       if (dict.eyeBlinkRight !== undefined) infl[dict.eyeBlinkRight] = blinkValue;
+    }
     }
   });
 
