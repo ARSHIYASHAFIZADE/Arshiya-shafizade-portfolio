@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 const useSpeechRecognition = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [hasPermission, setHasPermission] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     // Check if speech recognition is supported
@@ -14,49 +14,67 @@ const useSpeechRecognition = () => {
     const supported = !!SpeechRecognition;
     setSpeechSupported(supported);
 
-    if (!supported) {
+    if (supported) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event) => {
+        const current = event.resultIndex;
+        const transcript = event.results[current][0].transcript;
+        setTranscript(transcript);
+        console.log("AvatarChat: Recognized speech:", transcript);
+
+        if (event.results[current].isFinal) {
+          setIsListening(false);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("AvatarChat: Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        console.log("AvatarChat: Speech recognition ended");
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      window.recognitionRef = recognition;
+    } else {
       console.warn("Speech recognition not supported on this browser");
     }
+
+    return () => {
+      recognitionRef.current?.abort();
+    };
   }, []);
 
   const startListening = useCallback(() => {
-    if (!speechSupported) {
+    if (!speechSupported || !recognitionRef.current) {
       alert("Voice recognition is not supported. Please use Chrome, Edge, or Safari on desktop.");
       return;
     }
 
-    // Request permission on first click if not granted
-    const requestPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-        setHasPermission(true);
-      } catch (err) {
-        console.warn("Audio permission check failed:", err);
-        setHasPermission(false);
-      }
-    };
-
-    // First click always requests permission
-    if (!hasPermission) {
-      requestPermission();
-    }
-
     if (isListening) {
-      window.recognitionRef?.stop();
+      recognitionRef.current.stop();
       return;
     }
 
+    setTranscript("");
     setIsListening(true);
-    window.recognitionRef?.start();
-  }, [speechSupported, hasPermission]);
+    recognitionRef.current.start();
+    console.log("AvatarChat: Started listening...");
+  }, [speechSupported, isListening]);
 
   const stopListening = useCallback(() => {
-    window.recognitionRef?.stop();
+    recognitionRef.current?.stop();
     setIsListening(false);
   }, []);
 
-  return { isListening, transcript, hasPermission, speechSupported, startListening, stopListening };
+  return { isListening, transcript, speechSupported, startListening, stopListening };
 };
 
 // TTS hook using browser TTS (free, can be upgraded to ElevenLabs/OpenAI)
@@ -257,7 +275,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   }, [isSpeaking, onVisemeUpdate]);
 
   return (
-    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-30 w-full max-w-md">
+    <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md pointer-events-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

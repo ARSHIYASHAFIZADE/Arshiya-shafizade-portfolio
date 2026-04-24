@@ -324,8 +324,8 @@ const ProjectSidebar = () => (
       </p>
       <div className="flex flex-col gap-3">
         {[
-          { name: "Vercel",  count: 2, icon: "https://cdn.simpleicons.org/vercel",  color: "#e2e8f0" },
-          { name: "Railway", count: 2, icon: "https://cdn.simpleicons.org/railway", color: "#a78bfa" },
+          { name: "Vercel",  count: 2, icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/vercel.svg",  color: "#e2e8f0" },
+          { name: "Railway", count: 2, icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/railway.svg", color: "#a78bfa" },
         ].map(({ name, count, icon, color }) => (
           <div key={name} className="flex items-center gap-3">
             <img src={icon} alt={name} className="w-4 h-4 object-contain opacity-80" />
