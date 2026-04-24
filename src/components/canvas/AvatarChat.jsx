@@ -66,7 +66,7 @@ const useSpeechRecognition = () => {
     }
   }, []);
 
-  return { isListening, transcript, hasPermission, startListening, stopListening };
+  return { isListening, transcript, hasPermission, speechSupported, startListening, stopListening };
 };
 
 // TTS hook using browser TTS (free, can be upgraded to ElevenLabs/OpenAI)
@@ -234,11 +234,24 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [conversation, setConversation] = useState([]);
+  const [speechSupported, setSpeechSupported] = useState(true);
 
   const { startListening, stopListening, hasPermission } = useSpeechRecognition();
   const { speak, stop: stopSpeaking } = useTextToSpeech();
 
+  // Check if speech recognition is supported
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setSpeechSupported(!!SpeechRecognition);
+  }, []);
+
   const handleMicClick = async () => {
+    // Check if speech is supported before proceeding
+    if (!speechSupported) {
+      alert("Voice recognition is not supported in this browser. Please try Chrome, Edge, or Safari.");
+      return;
+    }
+
     if (!hasPermission) {
       // Request permission on first click
       try {
@@ -291,12 +304,17 @@ const AvatarChat = ({ onVisemeUpdate }) => {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleMicClick}
+          disabled={!speechSupported}
           className={`
             w-16 h-16 rounded-full flex items-center justify-center
-            ${isListening || isSpeaking
-              ? "bg-white/10 border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-              : "bg-white/5 border-white/10 hover:bg-white/10"
-            }
+            ${!speechSupported
+              ? "opacity-50 cursor-not-allowed"
+              : ""
+            } ${
+              isListening || isSpeaking
+                ? "bg-white/10 border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                : "bg-white/5 border-white/10 hover:bg-white/10"
+              }
             border transition-all duration-300 backdrop-blur-md
           `}
         >
@@ -334,9 +352,10 @@ const AvatarChat = ({ onVisemeUpdate }) => {
 
         {/* Status text - minimal */}
         <div className="text-white/60 text-xs font-medium">
-          {isListening && "Listening..."}
-          {isSpeaking && "Speaking..."}
-          {!isListening && !isSpeaking && "Tap to talk"}
+          {!speechSupported && "Voice not supported"}
+          {speechSupported && isListening && "Listening..."}
+          {speechSupported && isSpeaking && "Speaking..."}
+          {speechSupported && !isListening && !isSpeaking && "Tap to talk"}
         </div>
       </motion.div>
 
