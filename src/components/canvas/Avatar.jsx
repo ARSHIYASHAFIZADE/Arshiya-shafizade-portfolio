@@ -78,7 +78,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   });
 
   // Scale: bigger on desktop, smaller on mobile
-  const scale = isMobile ? [1.3, 1.3, 1.3] : [1.1, 1.1, 1.1];
+  const scale = isMobile ? [1.5, 1.5, 1.5] : [1.3, 1.3, 1.3];
 
   // Set initial rotation to look left when loaded
   useEffect(() => {
@@ -167,11 +167,11 @@ const ComputersCanvas = () => {
         shadows
         dpr={[1, 2]}
         camera={{
-          position: isMobile ? [0, -2, 6] : [0, -2.5, 5],
-          fov: isMobile ? 60 : 65
+          position: isMobile ? [0, -1.8, 5] : [0, -2, 4.5],
+          fov: isMobile ? 65 : 70
         }}
         gl={{ preserveDrawingBuffer: true, antialias: true }}
-        className="z-0 w-full h-screen"
+        className="z-10 w-full h-screen"
         onCreated={({ gl }) => {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         }}
