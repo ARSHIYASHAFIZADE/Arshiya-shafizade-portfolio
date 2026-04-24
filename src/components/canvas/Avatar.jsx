@@ -120,21 +120,23 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     const setArmPose = (upperArm, forearm, hand, isLeft) => {
       if (!upperArm) return;
 
-      upperArm.rotation.x = 1.57;
-      upperArm.rotation.y = 0;
-      upperArm.rotation.z = 0;
+      const direction = isLeft ? 1 : -1;
+
+      upperArm.rotation.x = 1.4;
+      upperArm.rotation.y = 0.05 * direction;
+      upperArm.rotation.z = 0.15 * direction;
 
       if (forearm) {
-        forearm.rotation.x = 0;
+        forearm.rotation.x = 0.15;
         forearm.rotation.y = 0;
-        forearm.rotation.z = 0;
+        forearm.rotation.z = 0.08 * direction;
         initialRotations.current.set(forearm.uuid, forearm.rotation.clone());
       }
 
       if (hand) {
-        hand.rotation.x = 0;
+        hand.rotation.x = 0.1;
         hand.rotation.y = 0;
-        hand.rotation.z = 0;
+        hand.rotation.z = 0.02 * direction;
         initialRotations.current.set(hand.uuid, hand.rotation.clone());
       }
 
