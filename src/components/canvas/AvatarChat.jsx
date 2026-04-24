@@ -5,76 +5,86 @@ import { motion, AnimatePresence } from "framer-motion";
 const useSpeechRecognition = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [finalTranscript, setFinalTranscript] = useState("");
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [speechError, setSpeechError] = useState("");
   const recognitionRef = useRef(null);
+  const manualStopRef = useRef(false);
 
   useEffect(() => {
-    // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const supported = !!SpeechRecognition;
     setSpeechSupported(supported);
+    if (!supported) return;
 
-    if (supported) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
 
-      recognition.onresult = (event) => {
-        const current = event.resultIndex;
-        const transcript = event.results[current][0].transcript;
-        setTranscript(transcript);
-        console.log("AvatarChat: Recognized speech:", transcript);
+    let interim = "";
+    let finalBuf = "";
 
-        if (event.results[current].isFinal) {
-          setIsListening(false);
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error("AvatarChat: Speech recognition error:", event.error);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        console.log("AvatarChat: Speech recognition ended");
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      window.recognitionRef = recognition;
-    } else {
-      console.warn("Speech recognition not supported on this browser");
-    }
-
-    return () => {
-      recognitionRef.current?.abort();
+    recognition.onresult = (event) => {
+      interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalBuf += res[0].transcript + " ";
+        else interim += res[0].transcript;
+      }
+      const combined = (finalBuf + interim).trim();
+      setTranscript(combined);
     };
+
+    recognition.onerror = (event) => {
+      console.error("AvatarChat: Speech recognition error:", event.error);
+      if (event.error === "network") setSpeechError("Speech service unreachable — please type instead.");
+      else if (event.error === "not-allowed" || event.error === "service-not-allowed") setSpeechError("Microphone blocked — allow it in browser settings.");
+      else if (event.error === "no-speech") setSpeechError("Didn't catch that — try again.");
+      else setSpeechError(event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      const text = (finalBuf + interim).trim();
+      finalBuf = "";
+      interim = "";
+      if (text) setFinalTranscript(text);
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    return () => recognition.abort();
   }, []);
 
   const startListening = useCallback(() => {
     if (!speechSupported || !recognitionRef.current) {
-      alert("Voice recognition is not supported. Please use Chrome, Edge, or Safari on desktop.");
+      setSpeechError("Voice not supported — use Chrome/Edge/Safari.");
       return;
     }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      return;
-    }
-
+    if (isListening) { manualStopRef.current = true; recognitionRef.current.stop(); return; }
     setTranscript("");
-    setIsListening(true);
-    recognitionRef.current.start();
-    console.log("AvatarChat: Started listening...");
+    setFinalTranscript("");
+    setSpeechError("");
+    manualStopRef.current = false;
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (e) {
+      // "already started" — stop then restart
+      try { recognitionRef.current.stop(); } catch {}
+      setSpeechError("Mic busy — try again.");
+    }
   }, [speechSupported, isListening]);
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
+    manualStopRef.current = true;
+    try { recognitionRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
 
-  return { isListening, transcript, speechSupported, startListening, stopListening };
+  return { isListening, transcript, finalTranscript, speechSupported, speechError, startListening, stopListening };
 };
 
 // TTS hook using browser TTS; drives lip-sync via word-boundary events
@@ -291,9 +301,11 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const {
     isListening,
     transcript,
+    finalTranscript,
     startListening,
     stopListening,
     speechSupported,
+    speechError,
   } = useSpeechRecognition();
   const { speak } = useTextToSpeech();
 
@@ -310,14 +322,14 @@ const AvatarChat = ({ onVisemeUpdate }) => {
     startListening();
   };
 
-  // When listening ends with a transcript, send it to Groq
+  // When listening ends with a final transcript, send it to Groq
   useEffect(() => {
-    if (isListening || isThinking) return;
-    const text = transcript?.trim();
+    if (isThinking) return;
+    const text = finalTranscript?.trim();
     if (!text || text === lastHandledRef.current) return;
     lastHandledRef.current = text;
     sendToGroq(text);
-  }, [isListening, transcript, isThinking]);
+  }, [finalTranscript, isThinking]);
 
   // Viseme is driven directly from SpeechSynthesis word boundaries in sendToGroq/speak
 
@@ -325,7 +337,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
     <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg pointer-events-auto flex flex-col items-center gap-4">
       {/* Transcript/AI response — lives above the bar as a sibling so it never overlaps */}
       <AnimatePresence mode="wait">
-        {(lastUserText || aiResponse || isThinking) && (
+        {(lastUserText || aiResponse || isThinking || speechError || (isListening && transcript)) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -333,6 +345,15 @@ const AvatarChat = ({ onVisemeUpdate }) => {
             className="w-full max-w-lg"
           >
             <div className="bg-[rgba(9,9,31,0.92)] backdrop-blur-lg rounded-2xl border border-white/10 px-4 py-3 shadow-xl">
+              {isListening && transcript && (
+                <>
+                  <div className="text-red-300/80 text-xs uppercase tracking-wide mb-1">Listening…</div>
+                  <div className="text-white/80 text-sm mb-2 italic break-words">{transcript}</div>
+                </>
+              )}
+              {speechError && !isListening && (
+                <div className="text-red-300/90 text-xs mb-2">{speechError}</div>
+              )}
               {lastUserText && (
                 <div className="text-white/60 text-xs uppercase tracking-wide mb-1">You</div>
               )}

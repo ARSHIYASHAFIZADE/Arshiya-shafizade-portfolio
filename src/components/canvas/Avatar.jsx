@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useState, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
+import { OrbitControls, Preload, useGLTF, Environment, ContactShadows } from "@react-three/drei";
 import { ErrorBoundary } from "react-error-boundary";
 import CanvasLoader from "../Loader";
 import AvatarChat from "./AvatarChat";
@@ -75,8 +75,21 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     if (!scene) return;
     morphMeshes.current = [];
     scene.traverse((node) => {
-      if (node.isMesh && node.material?.map) {
-        node.material.map.colorSpace = THREE.SRGBColorSpace;
+      if (node.isMesh) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+        node.frustumCulled = false;
+        const mat = node.material;
+        if (mat) {
+          if (mat.map) {
+            mat.map.colorSpace = THREE.SRGBColorSpace;
+            mat.map.anisotropy = 16;
+          }
+          if (mat.normalMap) mat.normalMap.anisotropy = 16;
+          if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
+          mat.envMapIntensity = 1.2;
+          mat.needsUpdate = true;
+        }
       }
       if (node.isBone || node.type === "Bone") {
         const n = node.name.toLowerCase();
@@ -244,24 +257,47 @@ const ComputersCanvas = () => {
       <Canvas
         frameloop="always"
         shadows
-        dpr={[1, 2]}
+        dpr={[1.5, 3]}
         camera={{
           position: isMobile ? [0, 0.1, 4.8] : [0, 0.1, 4.2],
           fov: isMobile ? 42 : 36
         }}
-        gl={{ preserveDrawingBuffer: true, antialias: true }}
+        gl={{
+          preserveDrawingBuffer: true,
+          antialias: true,
+          powerPreference: "high-performance",
+          alpha: true,
+        }}
         className="z-10 w-full h-screen"
         onCreated={({ gl }) => {
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.1;
         }}
       >
-        {/* Boosted lighting so the model isn't too dark */}
-        <ambientLight intensity={2.5} />
-        <pointLight position={[10, 10, 10]} intensity={600} />
-        <pointLight position={[-10, 5, -5]} intensity={300} color="#b0c4ff" />
-        <directionalLight position={[0, 10, 5]} intensity={1.5} />
+        {/* Three-point lighting + IBL for realistic skin */}
+        <ambientLight intensity={0.6} />
+        <directionalLight
+          castShadow
+          position={[3, 5, 4]}
+          intensity={2.2}
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+          shadow-bias={-0.0001}
+        />
+        <directionalLight position={[-4, 3, -2]} intensity={0.9} color="#b0c4ff" />
+        <directionalLight position={[0, 2, -5]} intensity={0.6} color="#ffd1a6" />
 
         <Suspense fallback={<CanvasLoader />}>
+          <Environment preset="studio" />
+          <ContactShadows
+            position={[0, isMobile ? -1.35 : -1.25, 0]}
+            opacity={0.45}
+            scale={6}
+            blur={2.4}
+            far={2}
+          />
           <OrbitControls
             enableZoom={false}
             enablePan={false}
