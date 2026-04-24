@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
 import { ErrorBoundary } from "react-error-boundary";
 import CanvasLoader from "../Loader";
@@ -54,39 +54,122 @@ const CanvasErrorFallback = ({ error, resetErrorBoundary }) => (
 
 const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   const { scene } = useGLTF("./Avatar/6756e17a1aa3af1c627b3bec.glb");
+  const { mouse } = useThree();
   const modelRef = useRef();
-  const headRef = useRef();
+  const headBone = useRef(null);
+  const neckBone = useRef(null);
+  const spineBone = useRef(null);
+  const leftArmBone = useRef(null);
+  const rightArmBone = useRef(null);
+  const morphMeshes = useRef([]);
+  const initialRotations = useRef(new Map());
+  const blinkTimer = useRef({ next: 2 + Math.random() * 3, progress: 0 });
 
   // Notify parent when model loads
   useEffect(() => {
-    if (scene) {
-      onModelLoaded?.();
-    }
+    if (scene) onModelLoaded?.();
   }, [scene, onModelLoaded]);
 
-  // Check for model loading errors
-  if (!scene) {
-    console.warn("Avatar model failed to load, using fallback.");
-    return null;
-  }
+  // Collect bones + morph meshes once
+  useEffect(() => {
+    if (!scene) return;
+    morphMeshes.current = [];
+    scene.traverse((node) => {
+      if (node.isMesh && node.material?.map) {
+        node.material.map.colorSpace = THREE.SRGBColorSpace;
+      }
+      if (node.isBone || node.type === "Bone") {
+        const n = node.name.toLowerCase();
+        if (!headBone.current && n.includes("head")) headBone.current = node;
+        if (!neckBone.current && n.includes("neck")) neckBone.current = node;
+        if (!spineBone.current && (n === "spine" || n.endsWith("spine2") || n.endsWith("spine1"))) spineBone.current = node;
+        if (!leftArmBone.current && (n.includes("leftarm") || n.includes("left_arm") || n.includes("leftupperarm"))) leftArmBone.current = node;
+        if (!rightArmBone.current && (n.includes("rightarm") || n.includes("right_arm") || n.includes("rightupperarm"))) rightArmBone.current = node;
+      }
+      if (node.isMesh && node.morphTargetInfluences && node.morphTargetDictionary) {
+        morphMeshes.current.push(node);
+      }
+    });
+    [headBone, neckBone, spineBone, leftArmBone, rightArmBone].forEach((r) => {
+      if (r.current) initialRotations.current.set(r.current.uuid, r.current.rotation.clone());
+    });
+  }, [scene]);
 
-  scene.traverse((node) => {
-    if (node.isMesh && node.material && node.material.map) {
-      // Three.js r152+: colorSpace instead of encoding
-      node.material.map.colorSpace = THREE.SRGBColorSpace;
-    }
-  });
+  if (!scene) return null;
 
-  // Scale: bigger on desktop, smaller on mobile
   const scale = isMobile ? [1.0, 1.0, 1.0] : [0.9, 0.9, 0.9];
   const modelY = isMobile ? -1.1 : -1.0;
 
-  // Set initial rotation to look left when loaded
-  useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.rotation.y = 1;
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+
+    // Idle breathing sway on spine
+    if (spineBone.current) {
+      const init = initialRotations.current.get(spineBone.current.uuid);
+      if (init) {
+        spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.015;
+        spineBone.current.rotation.z = init.z + Math.sin(t * 0.7) * 0.01;
+      }
     }
-  }, []);
+
+    // Head follows mouse + subtle idle
+    const targetYaw = mouse.x * 0.5 + Math.sin(t * 0.5) * 0.05;
+    const targetPitch = -mouse.y * 0.3 + Math.sin(t * 0.8) * 0.03;
+    if (neckBone.current) {
+      const init = initialRotations.current.get(neckBone.current.uuid);
+      if (init) {
+        neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.4, 0.08);
+        neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.4, 0.08);
+      }
+    }
+    if (headBone.current) {
+      const init = initialRotations.current.get(headBone.current.uuid);
+      if (init) {
+        headBone.current.rotation.y = THREE.MathUtils.lerp(headBone.current.rotation.y, init.y + targetYaw * 0.6, 0.1);
+        headBone.current.rotation.x = THREE.MathUtils.lerp(headBone.current.rotation.x, init.x + targetPitch * 0.6, 0.1);
+      }
+    }
+
+    // Arm micro-movement
+    if (leftArmBone.current) {
+      const init = initialRotations.current.get(leftArmBone.current.uuid);
+      if (init) leftArmBone.current.rotation.z = init.z + Math.sin(t * 0.9) * 0.02;
+    }
+    if (rightArmBone.current) {
+      const init = initialRotations.current.get(rightArmBone.current.uuid);
+      if (init) rightArmBone.current.rotation.z = init.z + Math.sin(t * 1.1 + 0.5) * 0.02;
+    }
+
+    // Lip-sync via mouthOpen morph when speaking (viseme > 0)
+    const mouthTarget = viseme > 0 ? 0.3 + Math.abs(Math.sin(t * 14)) * 0.5 : 0;
+    // Blink via morph if available (eyesClosed), else skip
+    blinkTimer.current.next -= 1 / 60;
+    let blinkValue = 0;
+    if (blinkTimer.current.next <= 0) {
+      blinkTimer.current.progress += 1 / 60;
+      blinkValue = blinkTimer.current.progress < 0.075 ? blinkTimer.current.progress / 0.075
+                 : blinkTimer.current.progress < 0.15 ? 1 - (blinkTimer.current.progress - 0.075) / 0.075
+                 : 0;
+      if (blinkTimer.current.progress >= 0.15) {
+        blinkTimer.current.progress = 0;
+        blinkTimer.current.next = 2 + Math.random() * 4;
+      }
+    }
+
+    for (const mesh of morphMeshes.current) {
+      const dict = mesh.morphTargetDictionary;
+      const infl = mesh.morphTargetInfluences;
+      if (dict.mouthOpen !== undefined) {
+        infl[dict.mouthOpen] = THREE.MathUtils.lerp(infl[dict.mouthOpen], mouthTarget, 0.4);
+      }
+      if (dict.mouthSmile !== undefined && viseme === 0) {
+        infl[dict.mouthSmile] = THREE.MathUtils.lerp(infl[dict.mouthSmile], 0.15, 0.02);
+      }
+      ["eyesClosed", "eyeBlinkLeft", "eyeBlinkRight"].forEach((k) => {
+        if (dict[k] !== undefined) infl[dict[k]] = blinkValue;
+      });
+    }
+  });
 
   return (
     <primitive
