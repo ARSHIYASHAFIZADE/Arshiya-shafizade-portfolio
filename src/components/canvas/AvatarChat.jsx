@@ -5,8 +5,23 @@ import { motion, AnimatePresence } from "framer-motion";
 const useSpeechRecognition = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [hasPermission, setHasPermission] = useState(false);
 
   useEffect(() => {
+    // Check audio permission
+    const checkPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        setHasPermission(true);
+      } catch (err) {
+        console.warn("Audio permission denied:", err);
+        setHasPermission(false);
+      }
+    };
+
+    checkPermission();
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
@@ -51,7 +66,7 @@ const useSpeechRecognition = () => {
     }
   }, []);
 
-  return { isListening, transcript, startListening, stopListening };
+  return { isListening, transcript, hasPermission, startListening, stopListening };
 };
 
 // TTS hook using browser TTS (free, can be upgraded to ElevenLabs/OpenAI)
@@ -214,10 +229,20 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const [aiResponse, setAiResponse] = useState("");
   const [conversation, setConversation] = useState([]);
 
-  const { startListening, stopListening } = useSpeechRecognition();
+  const { startListening, stopListening, hasPermission } = useSpeechRecognition();
   const { speak, stop: stopSpeaking } = useTextToSpeech();
 
   const handleMicClick = async () => {
+    if (!hasPermission) {
+      // Request permission on first click
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        alert("Microphone access is required for voice chat. Please allow it in your browser.");
+        return;
+      }
+    }
+
     if (isListening) {
       stopListening();
       return;

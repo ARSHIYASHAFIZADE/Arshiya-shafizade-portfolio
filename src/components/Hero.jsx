@@ -49,22 +49,6 @@ const Hero = () => {
 
       <AvatarCanvas />
 
-      <div className="absolute xs:bottom-10 bottom-32 w-full flex justify-center items-center">
-        <a href="#about">
-          <div className="w-[50px] h-[80px] rounded-3xl border-4 border-[#92f8f3] flex justify-center items-center p-2">
-            <motion.div
-              animate={{ y: [0, 18, 0] }}
-              transition={{
-                duration: 1.6,
-                repeat: Infinity,
-                repeatType: "loop",
-                ease: "easeInOut",
-              }}
-              className="w-3 h-3 rounded-full bg-[#92f8f3]"
-            />
-          </div>
-        </a>
-      </div>
     </section>
   );
 };
