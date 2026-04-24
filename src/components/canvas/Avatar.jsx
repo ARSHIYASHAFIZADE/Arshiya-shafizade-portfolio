@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
 import { ErrorBoundary } from "react-error-boundary";
 import CanvasLoader from "../Loader";
@@ -88,41 +88,14 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     }
   }, []);
 
-  // Add lip-sync animation (no rotation - model stays still)
-  useFrame(({ clock }) => {
-    if (modelRef.current) {
-      modelRef.current.scale.set(...scale);
-
-      // Simple lip-sync animation (jaw movement)
-      if (viseme > 0 && headRef.current) {
-        const jawOpen = Math.sin(clock.getElapsedTime() * 15) * 0.05 + 0.08;
-        headRef.current.position.y = THREE.MathUtils.lerp(
-          headRef.current.position.y || 0,
-          jawOpen * 0.5,
-          0.2
-        );
-      } else if (headRef.current) {
-        headRef.current.position.y = THREE.MathUtils.lerp(
-          headRef.current.position.y || 0,
-          0,
-          0.1
-        );
-      }
-    }
-  });
-
   return (
-    <mesh ref={modelRef}>
-      <primitive
-        object={scene}
-        position={[0, modelY, 0]}
-        rotation={[-0.01, 0, 0]}
-        material={{ color: "#FFFFFF" }}
-        scale={scale}
-        ref={headRef}
-      />
-      <meshStandardMaterial attach="shadow" color="#000000" />
-    </mesh>
+    <primitive
+      ref={modelRef}
+      object={scene}
+      position={[0, modelY, 0]}
+      rotation={[-0.01, 0, 0]}
+      scale={scale}
+    />
   );
 };
 
