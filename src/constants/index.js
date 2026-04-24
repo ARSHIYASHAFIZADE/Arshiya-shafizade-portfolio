@@ -62,9 +62,9 @@ const technologies = [
   { name: "Three.js", icon: threejs },
   { name: "Docker", icon: docker },
   { name: "Kubernetes", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
-  { name: "OpenShift", icon: "https://cdn.simpleicons.org/redhatopenshift/EE0000" },
-  { name: "IBM Cloud", icon: "https://cdn.simpleicons.org/ibm/006699" },
-  { name: "Vault", icon: "https://cdn.simpleicons.org/vault/ffd814" },
+  { name: "OpenShift", icon: "https://cdn.simpleicons.org/redhatopenshift" },
+  { name: "IBM Cloud", icon: "https://cdn.simpleicons.org/ibm" },
+  { name: "Vault", icon: "https://cdn.simpleicons.org/vault" },
   { name: "Elasticsearch", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/elasticsearch/elasticsearch-original.svg" },
   { name: "ArgoCD", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/argocd/argocd-original.svg" },
   { name: "Git", icon: git },
@@ -241,7 +241,7 @@ const projects = [
       { name: "TypeScript" },
     ],
     image: "/canopy.png",
-    icon: "https://cdn.simpleicons.org/vercel/ffffff",
+    icon: "https://cdn.simpleicons.org/vercel",
     source_code_link: "https://my-jungle-seven.vercel.app",
   },
   {
@@ -256,7 +256,7 @@ const projects = [
       { name: "Tailwind" },
     ],
     image: "/task_automation.jpeg",
-    icon: "https://cdn.simpleicons.org/vercel/ffffff",
+    icon: "https://cdn.simpleicons.org/vercel",
     source_code_link: "https://scrum-tassk-automation.vercel.app",
   },
   {
@@ -271,7 +271,7 @@ const projects = [
       { name: "Docker" },
     ],
     image: "/alf.png",
-    icon: "https://cdn.simpleicons.org/github/ffffff",
+    icon: "https://cdn.simpleicons.org/github",
     source_code_link: "https://github.com/ARSHIYASHAFIZADE/ALF",
   },
   {
@@ -286,7 +286,7 @@ const projects = [
       { name: "Llama 3.3" },
     ],
     image: "/sam.jpeg",
-    icon: "https://cdn.simpleicons.org/github/ffffff",
+    icon: "https://cdn.simpleicons.org/github",
     source_code_link: "https://github.com/ARSHIYASHAFIZADE/SamAI",
   },
 ];
