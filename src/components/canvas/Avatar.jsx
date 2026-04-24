@@ -120,9 +120,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     const setArmPose = (upperArm, forearm, hand, isLeft) => {
       if (!upperArm) return;
 
-      const direction = isLeft ? 1 : -1;
-
-      upperArm.rotation.x = 1.57 * direction;
+      upperArm.rotation.x = 1.57;
       upperArm.rotation.y = 0;
       upperArm.rotation.z = 0;
 
