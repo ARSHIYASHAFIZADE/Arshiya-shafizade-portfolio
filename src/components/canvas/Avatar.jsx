@@ -87,7 +87,7 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
           }
           if (mat.normalMap) mat.normalMap.anisotropy = 16;
           if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
-          mat.envMapIntensity = 1.2;
+          mat.envMapIntensity = 0.5;
           mat.needsUpdate = true;
         }
       }
@@ -106,6 +106,17 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
     [headBone, neckBone, spineBone, leftArmBone, rightArmBone].forEach((r) => {
       if (r.current) initialRotations.current.set(r.current.uuid, r.current.rotation.clone());
     });
+    // Drop arms out of T-pose into a more natural resting posture
+    if (leftArmBone.current) {
+      leftArmBone.current.rotation.z += 1.1;
+      const init = leftArmBone.current.rotation.clone();
+      initialRotations.current.set(leftArmBone.current.uuid, init);
+    }
+    if (rightArmBone.current) {
+      rightArmBone.current.rotation.z -= 1.1;
+      const init = rightArmBone.current.rotation.clone();
+      initialRotations.current.set(rightArmBone.current.uuid, init);
+    }
   }, [scene]);
 
   if (!scene) return null;
@@ -143,23 +154,19 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
       }
     }
 
-    // Arm movement - bigger & more natural, extra gestures while speaking
-    const speaking = viseme > 0.01;
-    const gestureBoost = speaking ? 1 : 0;
+    // Gentle arm sway — subtle, no exaggerated gestures
     if (leftArmBone.current) {
       const init = initialRotations.current.get(leftArmBone.current.uuid);
       if (init) {
-        leftArmBone.current.rotation.z = init.z + Math.sin(t * 0.9) * (0.06 + 0.12 * gestureBoost);
-        leftArmBone.current.rotation.x = init.x + Math.sin(t * 1.3 + 0.5) * (0.03 + 0.08 * gestureBoost);
-        leftArmBone.current.rotation.y = init.y + Math.sin(t * 0.7) * (0.02 + 0.06 * gestureBoost);
+        leftArmBone.current.rotation.z = init.z + Math.sin(t * 0.8) * 0.015;
+        leftArmBone.current.rotation.x = init.x + Math.sin(t * 1.2 + 0.5) * 0.01;
       }
     }
     if (rightArmBone.current) {
       const init = initialRotations.current.get(rightArmBone.current.uuid);
       if (init) {
-        rightArmBone.current.rotation.z = init.z + Math.sin(t * 1.1 + 0.5) * (0.06 + 0.12 * gestureBoost);
-        rightArmBone.current.rotation.x = init.x + Math.sin(t * 1.5 + 1.2) * (0.03 + 0.08 * gestureBoost);
-        rightArmBone.current.rotation.y = init.y + Math.sin(t * 0.8 + 1.0) * (0.02 + 0.06 * gestureBoost);
+        rightArmBone.current.rotation.z = init.z + Math.sin(t * 0.9 + 0.5) * 0.015;
+        rightArmBone.current.rotation.x = init.x + Math.sin(t * 1.3 + 1.2) * 0.01;
       }
     }
 
@@ -273,24 +280,24 @@ const ComputersCanvas = () => {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 3));
           gl.outputColorSpace = THREE.SRGBColorSpace;
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.1;
+          gl.toneMappingExposure = 0.75;
         }}
       >
-        {/* Three-point lighting + IBL for realistic skin */}
-        <ambientLight intensity={0.6} />
+        {/* Softer three-point lighting — muted, natural skin */}
+        <ambientLight intensity={0.25} />
         <directionalLight
           castShadow
           position={[3, 5, 4]}
-          intensity={2.2}
+          intensity={1.0}
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-bias={-0.0001}
         />
-        <directionalLight position={[-4, 3, -2]} intensity={0.9} color="#b0c4ff" />
-        <directionalLight position={[0, 2, -5]} intensity={0.6} color="#ffd1a6" />
+        <directionalLight position={[-4, 3, -2]} intensity={0.35} color="#b0c4ff" />
+        <directionalLight position={[0, 2, -5]} intensity={0.2} color="#ffd1a6" />
 
         <Suspense fallback={<CanvasLoader />}>
-          <Environment preset="studio" />
+          <Environment preset="apartment" background={false} />
           <ContactShadows
             position={[0, isMobile ? -1.35 : -1.25, 0]}
             opacity={0.45}

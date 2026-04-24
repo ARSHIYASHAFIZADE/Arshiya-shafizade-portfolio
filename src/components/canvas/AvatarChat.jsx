@@ -88,22 +88,48 @@ const useSpeechRecognition = () => {
 };
 
 // TTS hook using browser TTS; drives lip-sync via word-boundary events
+// Locks to a single male English voice so it doesn't swap mid-session.
 const useTextToSpeech = () => {
   const speakRef = useRef(null);
+  const voiceRef = useRef(null);
+
+  const pickMaleVoice = () => {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return null;
+    const prefs = [
+      /google uk english male/i,
+      /google us english.*male/i,
+      /microsoft david/i,
+      /microsoft guy/i,
+      /microsoft mark/i,
+      /daniel/i,
+      /^alex$/i,
+      /^fred$/i,
+      /male/i,
+    ];
+    for (const p of prefs) {
+      const v = voices.find(x => p.test(x.name) && /^en/i.test(x.lang));
+      if (v) return v;
+    }
+    return voices.find(v => /^en/i.test(v.lang)) || voices[0];
+  };
+
+  useEffect(() => {
+    const load = () => { voiceRef.current = pickMaleVoice(); };
+    load();
+    speechSynthesis.onvoiceschanged = load;
+    return () => { speechSynthesis.onvoiceschanged = null; };
+  }, []);
 
   const speak = useCallback((text, onEnd, onViseme) => {
     if (speakRef.current) speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1;
-    utterance.pitch = 1;
+    utterance.pitch = 0.95;
     utterance.volume = 1;
-
-    // Pick an English voice if available
-    const voices = speechSynthesis.getVoices();
-    const preferred = voices.find(v => /en-?us/i.test(v.lang) && /female|samantha|google/i.test(v.name))
-      || voices.find(v => /en/i.test(v.lang));
-    if (preferred) utterance.voice = preferred;
+    if (!voiceRef.current) voiceRef.current = pickMaleVoice();
+    if (voiceRef.current) utterance.voice = voiceRef.current;
 
     let decayTimer = null;
     const pulse = (strength) => {
@@ -223,12 +249,16 @@ const GroqAPI = {
           messages: [
             {
               role: "system",
-              content: `You are Arshiya Shafizade's AI assistant. Be friendly, professional, and helpful.
+              content: `You are an AI assistant on Arshiya Shafizade's personal portfolio site. You speak directly with visitors AND with Arshiya himself.
+
+IMPORTANT RULES:
+- Arshiya is male (he/him). Always refer to him by name "Arshiya" or pronouns "he"/"him"/"his". Never use asterisks, never use "*", never use "they", never use placeholders.
+- If the current visitor IS Arshiya, address him as "you" / "Arshiya".
+- Never output markdown asterisks (*text*, **text**) or role-playing stage directions. Plain spoken English only.
+- Keep responses under 120 words, conversational, concise.
 
 RESUME CONTEXT:
-${RESUME_CONTEXT}
-
-When asked about skills, experience, or projects, reference to resume above. Keep responses conversational and under 150 words unless asked for more details. Be concise but informative.`,
+${RESUME_CONTEXT}`,
             },
             {
               role: "user",
@@ -248,7 +278,9 @@ When asked about skills, experience, or projects, reference to resume above. Kee
         return "Sorry, I couldn't process that request.";
       }
 
-      return data.choices[0].message.content || "I couldn't process that request.";
+      const raw = data.choices[0].message.content || "I couldn't process that request.";
+      // Strip markdown asterisks and role-play stage directions
+      return raw.replace(/\*+/g, "").replace(/\s{2,}/g, " ").trim();
     } catch (error) {
       console.error("AvatarChat: Groq API error:", error);
       console.error("AvatarChat: Error details:", {
@@ -334,7 +366,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   // Viseme is driven directly from SpeechSynthesis word boundaries in sendToGroq/speak
 
   return (
-    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg pointer-events-auto flex flex-col items-center gap-4">
+    <div className="absolute bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] pointer-events-auto flex flex-col items-end gap-3">
       {/* Transcript/AI response — lives above the bar as a sibling so it never overlaps */}
       <AnimatePresence mode="wait">
         {(lastUserText || aiResponse || isThinking || speechError || (isListening && transcript)) && (
