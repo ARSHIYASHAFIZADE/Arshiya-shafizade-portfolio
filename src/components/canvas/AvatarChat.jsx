@@ -6,64 +6,54 @@ const useSpeechRecognition = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [hasPermission, setHasPermission] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
 
   useEffect(() => {
-    // Check audio permission
-    const checkPermission = async () => {
+    // Check if speech recognition is supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const supported = !!SpeechRecognition;
+    setSpeechSupported(supported);
+
+    if (!supported) {
+      console.warn("Speech recognition not supported on this browser");
+    }
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!speechSupported) {
+      alert("Voice recognition is not supported. Please use Chrome, Edge, or Safari on desktop.");
+      return;
+    }
+
+    // Request permission on first click if not granted
+    const requestPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop());
         setHasPermission(true);
       } catch (err) {
-        console.warn("Audio permission denied:", err);
+        console.warn("Audio permission check failed:", err);
         setHasPermission(false);
       }
     };
 
-    checkPermission();
+    // First click always requests permission
+    if (!hasPermission) {
+      requestPermission();
+    }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      console.warn("Speech recognition not supported");
+    if (isListening) {
+      window.recognitionRef?.stop();
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event) => {
-      const result = event.results[0][0].transcript;
-      setTranscript(result);
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    window.recognitionRef = recognition;
-  }, []);
-
-  const startListening = useCallback(() => {
-    if (window.recognitionRef) {
-      window.recognitionRef.start();
-      setIsListening(true);
-    }
-  }, []);
+    setIsListening(true);
+    window.recognitionRef?.start();
+  }, [speechSupported, hasPermission]);
 
   const stopListening = useCallback(() => {
-    if (window.recognitionRef) {
-      window.recognitionRef.stop();
-      setIsListening(false);
-    }
+    window.recognitionRef?.stop();
+    setIsListening(false);
   }, []);
 
   return { isListening, transcript, hasPermission, speechSupported, startListening, stopListening };
@@ -102,28 +92,7 @@ const useTextToSpeech = () => {
   return { speak, stop };
 };
 
-// Lip-sync analyzer - extracts audio features for mouth animation
-const useLipSync = (isSpeaking) => {
-  const [viseme, setViseme] = useState(0);
-
-  useEffect(() => {
-    if (!isSpeaking) {
-      setViseme(0); // Closed mouth
-      return;
-    }
-
-    // Simple simulated lip-sync - cycles through visemes when speaking
-    const interval = setInterval(() => {
-      setViseme(prev => (prev + 1) % 10); // 10 basic viseme positions
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isSpeaking]);
-
-  return viseme;
-};
-
-// Groq API integration
+// Resume context - embedded directly
 const RESUME_CONTEXT = `ARSHIYA SHAFIZADE
 Full Stack Engineer & AI Developer
 
@@ -134,7 +103,7 @@ GitHub: github.com/ARSHIYASHAFIZADE
 Portfolio: arshiyashafizade-portfolio.vercel.app
 
 EDUCATION:
-Taylor's University - Bachelor of Computer Science (AI & Data Science), Expected June 2026
+Taylor's University - Bachelor of Computer Science (AI & Data Science), Expected June2026
 Sunway College - CIMP Diploma (Canadian)
 
 WORK EXPERIENCE:
@@ -178,6 +147,7 @@ Databases/Search: MongoDB, MySQL, PostgreSQL, Redis, Milvus/Zilliz, Elasticsearc
 Infra/DevOps: Docker, Nginx, GitHub Actions, GitLab CI/CD, ArgoCD, IBM Cloud, Cloudflare, Linux, Temporal
 Security: JWT, OAuth2, Azure AD SSO, HashiCorp Vault, Passport.js, WebSockets, Stripe`;
 
+// Groq API integration
 const GroqAPI = {
   async chat(userMessage) {
     const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
@@ -186,10 +156,11 @@ const GroqAPI = {
 
     if (!API_KEY) {
       console.error("VITE_GROQ_API_KEY not found in .env");
-      return "Please add your Groq API key to the .env file.";
+      return "Please add your Groq API key to Vercel environment variables.";
     }
 
     try {
+      console.log("AvatarChat: Calling Groq API...");
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -206,7 +177,7 @@ const GroqAPI = {
 RESUME CONTEXT:
 ${RESUME_CONTEXT}
 
-When asked about skills, experience, or projects, reference the resume above. Keep responses conversational and under 150 words unless asked for more details. Be concise but informative.`,
+When asked about skills, experience, or projects, reference to resume above. Keep responses conversational and under 150 words unless asked for more details. Be concise but informative.`,
             },
             {
               role: "user",
@@ -219,9 +190,20 @@ When asked about skills, experience, or projects, reference the resume above. Ke
       });
 
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || "I couldn't process that response.";
+      console.log("AvatarChat: Groq response:", data);
+
+      if (!data.choices?.[0]?.message?.content) {
+        console.error("AvatarChat: No valid response from Groq API");
+        return "Sorry, I couldn't process that request.";
+      }
+
+      return data.choices[0].message.content || "I couldn't process that request.";
     } catch (error) {
-      console.error("Groq API error:", error);
+      console.error("AvatarChat: Groq API error:", error);
+      console.error("AvatarChat: Error details:", {
+        message: error.message,
+        status: error.status || "unknown",
+      });
       return "Sorry, I'm having trouble connecting right now.";
     }
   },
@@ -234,32 +216,14 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [conversation, setConversation] = useState([]);
-  const [speechSupported, setSpeechSupported] = useState(true);
 
-  const { startListening, stopListening, hasPermission } = useSpeechRecognition();
+  const { startListening, stopListening, speechSupported } = useSpeechRecognition();
   const { speak, stop: stopSpeaking } = useTextToSpeech();
 
-  // Check if speech recognition is supported
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setSpeechSupported(!!SpeechRecognition);
-  }, []);
-
   const handleMicClick = async () => {
-    // Check if speech is supported before proceeding
     if (!speechSupported) {
-      alert("Voice recognition is not supported in this browser. Please try Chrome, Edge, or Safari.");
+      alert("Voice recognition is not supported. Please use Chrome, Edge, or Safari on desktop.");
       return;
-    }
-
-    if (!hasPermission) {
-      // Request permission on first click
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        alert("Microphone access is required for voice chat. Please allow it in your browser.");
-        return;
-      }
     }
 
     if (isListening) {
@@ -339,11 +303,11 @@ const AvatarChat = ({ onVisemeUpdate }) => {
               viewBox="0 0 24 24"
             >
               {isListening || isSpeaking ? (
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-6 6 3 3 0 0 0 3-3h1a3 3 0 0 0 0 6h1a3 3 0 0 0 0-6z" />
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0 0 6h1a3 3 0 0 0 6z" />
               ) : (
                 <>
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-6 6 3 3 0 0 0 3-3h1a3 3 0 0 0 0 6h1a3 3 0 0 0 0-6z" />
-                  <path d="M19 10v2a7 7 0 0 0-7 7h-4a7 7 0 0 0-7-7v-2" opacity={0.5} />
+                  <path d="M12 1a3 3 0 0 0 3 3v8a3 3 0 0 6 0V4a3 3 0 0 0 0 3-3h1a3 3 0 0 0 6h1a3 3 0 0 6z" />
+                  <path d="M19 10v2a7 7 0 0 0 0 7 7h-4a7 7 0 0 0 0 7-7v-2" opacity={0.5} />
                 </>
               )}
             </svg>
@@ -357,40 +321,40 @@ const AvatarChat = ({ onVisemeUpdate }) => {
           {speechSupported && isSpeaking && "Speaking..."}
           {speechSupported && !isListening && !isSpeaking && "Tap to talk"}
         </div>
-      </motion.div>
 
-      {/* Transcript/AI response - positioned above button */}
-      <AnimatePresence mode="wait">
-        {(transcript || aiResponse) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute -top-20 left-1/2 -translate-x-1/2 w-max max-w-xs"
-          >
-            <div className="bg-[rgba(9,9,31,0.95)] backdrop-blur-lg rounded-xl border border-white/10 px-4 py-3">
-              {transcript && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-white/80 text-sm mb-1"
-                >
-                  {transcript}
-                </motion.div>
-              )}
-              {aiResponse && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-cyan-300/90 text-sm"
-                >
-                  {aiResponse}
-                </motion.div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Transcript/AI response - positioned above button */}
+        <AnimatePresence mode="wait">
+          {(transcript || aiResponse) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute -top-20 left-1/2 -translate-x-1/2 w-max max-w-xs"
+            >
+              <div className="bg-[rgba(9,9,31,0.95)] backdrop-blur-lg rounded-xl border border-white/10 px-4 py-3">
+                {transcript && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-white/80 text-sm mb-1"
+                  >
+                    {transcript}
+                  </motion.div>
+                )}
+                {aiResponse && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-cyan-300/90 text-sm"
+                  >
+                    {aiResponse}
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 };
