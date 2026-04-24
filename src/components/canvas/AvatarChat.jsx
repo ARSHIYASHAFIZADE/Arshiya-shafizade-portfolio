@@ -1,20 +1,35 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Voice recognition hook
 const useSpeechRecognition = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [finalTranscript, setFinalTranscript] = useState("");
   const [speechSupported, setSpeechSupported] = useState(true);
   const [speechError, setSpeechError] = useState("");
+  const [browserInfo, setBrowserInfo] = useState({ name: "", supported: false });
   const recognitionRef = useRef(null);
   const manualStopRef = useRef(false);
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const supported = !!SpeechRecognition;
-    setSpeechSupported(supported);
+    const detectBrowser = () => {
+      const ua = navigator.userAgent;
+      let name = "unknown";
+      if (ua.includes("Chrome") && !ua.includes("Edg")) name = "Chrome";
+      else if (ua.includes("Safari") && !ua.includes("Chrome")) name = "Safari";
+      else if (ua.includes("Edg")) name = "Edge";
+      else if (ua.includes("Firefox")) name = "Firefox";
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const supported = !!SpeechRecognition;
+
+      setBrowserInfo({ name, supported });
+      setSpeechSupported(supported);
+
+      return { SpeechRecognition, supported };
+    };
+
+    const { SpeechRecognition, supported } = detectBrowser();
     if (!supported) return;
 
     const recognition = new SpeechRecognition();
@@ -39,19 +54,29 @@ const useSpeechRecognition = () => {
 
     recognition.onerror = (event) => {
       console.error("AvatarChat: Speech recognition error:", event.error);
-      if (event.error === "network") setSpeechError("Speech service unreachable — please type instead.");
-      else if (event.error === "not-allowed" || event.error === "service-not-allowed") setSpeechError("Microphone blocked — allow it in browser settings.");
-      else if (event.error === "no-speech") setSpeechError("Didn't catch that — try again.");
-      else setSpeechError(event.error);
+      const errorMap = {
+        "network": "Speech service unreachable — please type instead.",
+        "not-allowed": "Microphone blocked — allow it in browser settings.",
+        "service-not-allowed": "Speech service not allowed — try another browser.",
+        "no-speech": "Didn't catch that — try again.",
+        "audio-capture": "No microphone found — check your device.",
+        "aborted": "Listening stopped.",
+      };
+      setSpeechError(errorMap[event.error] || `Error: ${event.error}`);
       setIsListening(false);
     };
 
     recognition.onend = () => {
       const text = (finalBuf + interim).trim();
+      if (text) setFinalTranscript(text);
       finalBuf = "";
       interim = "";
-      if (text) setFinalTranscript(text);
       setIsListening(false);
+    };
+
+    recognition.onstart = () => {
+      console.log("AvatarChat: Speech recognition started");
+      setSpeechError("");
     };
 
     recognitionRef.current = recognition;
@@ -60,10 +85,17 @@ const useSpeechRecognition = () => {
 
   const startListening = useCallback(() => {
     if (!speechSupported || !recognitionRef.current) {
-      setSpeechError("Voice not supported — use Chrome/Edge/Safari.");
+      const browserSupportMsg = browserInfo.name === "unknown"
+        ? "Voice not supported — use Chrome, Edge, or Safari."
+        : `${browserInfo.name} may not support voice — try Chrome or Edge.`;
+      setSpeechError(browserSupportMsg);
       return;
     }
-    if (isListening) { manualStopRef.current = true; recognitionRef.current.stop(); return; }
+    if (isListening) {
+      manualStopRef.current = true;
+      recognitionRef.current.stop();
+      return;
+    }
     setTranscript("");
     setFinalTranscript("");
     setSpeechError("");
@@ -72,11 +104,10 @@ const useSpeechRecognition = () => {
       recognitionRef.current.start();
       setIsListening(true);
     } catch (e) {
-      // "already started" — stop then restart
       try { recognitionRef.current.stop(); } catch {}
       setSpeechError("Mic busy — try again.");
     }
-  }, [speechSupported, isListening]);
+  }, [speechSupported, isListening, browserInfo]);
 
   const stopListening = useCallback(() => {
     manualStopRef.current = true;
@@ -84,16 +115,24 @@ const useSpeechRecognition = () => {
     setIsListening(false);
   }, []);
 
-  return { isListening, transcript, finalTranscript, speechSupported, speechError, startListening, stopListening };
+  return {
+    isListening,
+    transcript,
+    finalTranscript,
+    speechSupported,
+    speechError,
+    browserInfo,
+    startListening,
+    stopListening
+  };
 };
 
-// TTS hook using browser TTS; drives lip-sync via word-boundary events
-// Locks to a single male English voice so it doesn't swap mid-session.
 const useTextToSpeech = () => {
   const speakRef = useRef(null);
   const voiceRef = useRef(null);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
 
-  const pickMaleVoice = () => {
+  const pickMaleVoice = useCallback(() => {
     const voices = speechSynthesis.getVoices();
     if (!voices.length) return null;
     const prefs = [
@@ -102,57 +141,125 @@ const useTextToSpeech = () => {
       /microsoft david/i,
       /microsoft guy/i,
       /microsoft mark/i,
+      /microsoft george/i,
       /daniel/i,
       /^alex$/i,
       /^fred$/i,
+      /^thomas$/i,
+      /james/i,
+      /robert/i,
       /male/i,
     ];
     for (const p of prefs) {
       const v = voices.find(x => p.test(x.name) && /^en/i.test(x.lang));
       if (v) return v;
     }
-    return voices.find(v => /^en/i.test(v.lang)) || voices[0];
-  };
-
-  useEffect(() => {
-    const load = () => { voiceRef.current = pickMaleVoice(); };
-    load();
-    speechSynthesis.onvoiceschanged = load;
-    return () => { speechSynthesis.onvoiceschanged = null; };
+    const englishVoice = voices.find(v => /^en/i.test(v.lang));
+    return englishVoice || voices[0];
   }, []);
 
+  useEffect(() => {
+    const load = () => {
+      const voice = pickMaleVoice();
+      voiceRef.current = voice;
+      setVoicesLoaded(true);
+      console.log("AvatarChat: TTS voice selected:", voice?.name || "default");
+    };
+
+    load();
+    speechSynthesis.onvoiceschanged = load;
+
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, [pickMaleVoice]);
+
   const speak = useCallback((text, onEnd, onViseme) => {
-    if (speakRef.current) speechSynthesis.cancel();
+    if (!window.speechSynthesis) {
+      console.warn("AvatarChat: SpeechSynthesis not supported");
+      onEnd?.();
+      return;
+    }
+
+    if (speakRef.current) {
+      speechSynthesis.cancel();
+    }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
+    utterance.rate = 1.0;
     utterance.pitch = 0.95;
-    utterance.volume = 1;
-    if (!voiceRef.current) voiceRef.current = pickMaleVoice();
-    if (voiceRef.current) utterance.voice = voiceRef.current;
+    utterance.volume = 1.0;
+
+    if (!voiceRef.current) {
+      voiceRef.current = pickMaleVoice();
+    }
+    if (voiceRef.current) {
+      utterance.voice = voiceRef.current;
+    }
+
+    const vowelCount = (word) => (word.match(/[aeiouAEIOU]/g) || []).length;
+    const consonantCount = (word) => word.length - vowelCount(word);
 
     let decayTimer = null;
     const pulse = (strength) => {
-      onViseme?.(strength);
+      onViseme?.(Math.max(0, Math.min(1, strength)));
       if (decayTimer) clearTimeout(decayTimer);
-      decayTimer = setTimeout(() => onViseme?.(0.08), 140);
+      decayTimer = setTimeout(() => onViseme?.(0.05), 120);
     };
 
-    utterance.onstart = () => pulse(0.5);
+    utterance.onstart = () => {
+      pulse(0.4);
+    };
+
     utterance.onboundary = (e) => {
       if (e.name !== "word") return;
+
       const word = text.slice(e.charIndex, e.charIndex + (e.charLength || 4));
-      // Strength scales with word length + vowels (rough approximation of openness)
-      const vowels = (word.match(/[aeiouAEIOU]/g) || []).length;
-      const strength = Math.min(1, 0.35 + vowels * 0.15 + word.length * 0.03);
-      pulse(strength);
+      const vowels = vowelCount(word);
+      const consonants = consonantCount(word);
+      const wordLen = word.length;
+
+      let strength = 0.35;
+
+      const hasOpenSound = /[aeiouyAEIOUY]/.test(word);
+      if (hasOpenSound) {
+        strength = 0.45 + (vowels * 0.12);
+      }
+
+      const plosives = /[pbtdkg]/g.test(word);
+      if (plosives) {
+        strength += 0.15;
+      }
+
+      const fricatives = /[fszv]/g.test(word);
+      if (fricatives) {
+        strength += 0.08;
+      }
+
+      const nasals = /[mn]/g.test(word);
+      if (nasals) {
+        strength -= 0.08;
+      }
+
+      const shortWord = wordLen <= 3;
+      const longWord = wordLen >= 7;
+
+      if (shortWord) strength += 0.1;
+      if (longWord) strength += 0.15;
+
+      strength += wordLen * 0.02;
+
+      pulse(Math.min(1, strength));
     };
+
     utterance.onend = () => {
       if (decayTimer) clearTimeout(decayTimer);
       onViseme?.(0);
       onEnd?.();
     };
-    utterance.onerror = () => {
+
+    utterance.onerror = (e) => {
+      console.error("AvatarChat: TTS error:", e);
       if (decayTimer) clearTimeout(decayTimer);
       onViseme?.(0);
       onEnd?.();
@@ -160,16 +267,17 @@ const useTextToSpeech = () => {
 
     speakRef.current = utterance;
     speechSynthesis.speak(utterance);
-  }, []);
+  }, [pickMaleVoice]);
 
   const stop = useCallback(() => {
-    speechSynthesis.cancel();
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+    }
   }, []);
 
-  return { speak, stop };
+  return { speak, stop, voiceName: voiceRef.current?.name };
 };
 
-// Resume context - embedded directly
 const RESUME_CONTEXT = `ARSHIYA SHAFIZADE
 Full Stack Engineer & AI Developer
 
@@ -180,12 +288,12 @@ GitHub: github.com/ARSHIYASHAFIZADE
 Portfolio: arshiyashafizade-portfolio.vercel.app
 
 EDUCATION:
-Taylor's University - Bachelor of Computer Science (AI & Data Science), Expected June2026
+Taylor's University - Bachelor of Computer Science (AI & Data Science), Expected June 2026
 Sunway College - CIMP Diploma (Canadian)
 
 WORK EXPERIENCE:
 1. CoolRiots - Full Stack Developer (Feb 2025 - Present)
-   - 600-file/102K LOC React + TypeScript SPA, 290-file/28K LOC Node.js + Express backend for BeX AI platform
+   - 600-file React + TypeScript SPA, 290-file Node.js + Express backend for BeX AI platform
    - Designed OpCode V2 CPIE schema (JSON workflow language with llm, api, memory, rag steps)
    - Integrated 8+ LLM providers (OpenAI, Groq, Gemini, WatsonX, Mistral, SambaNova, Cerebras, Novita)
    - Built LangChain + Neo4j GraphRAG pipeline, Milvus vector DB, IBM Cloud Object Storage
@@ -224,20 +332,16 @@ Databases/Search: MongoDB, MySQL, PostgreSQL, Redis, Milvus/Zilliz, Elasticsearc
 Infra/DevOps: Docker, Nginx, GitHub Actions, GitLab CI/CD, ArgoCD, IBM Cloud, Cloudflare, Linux, Temporal
 Security: JWT, OAuth2, Azure AD SSO, HashiCorp Vault, Passport.js, WebSockets, Stripe`;
 
-// Groq API integration
 const GroqAPI = {
   async chat(userMessage) {
     const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-    console.log("AvatarChat: API key exists:", !!API_KEY);
-    console.log("AvatarChat: User message:", userMessage);
 
     if (!API_KEY) {
       console.error("VITE_GROQ_API_KEY not found in .env");
-      return "Please add your Groq API key to Vercel environment variables.";
+      return "API key not configured. Please add your Groq API key.";
     }
 
     try {
-      console.log("AvatarChat: Calling Groq API...");
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -249,13 +353,13 @@ const GroqAPI = {
           messages: [
             {
               role: "system",
-              content: `You are an AI assistant on Arshiya Shafizade's personal portfolio site. You speak directly with visitors AND with Arshiya himself.
+              content: `You are Arshiya's AI assistant on his portfolio. You speak directly with visitors.
 
-IMPORTANT RULES:
-- Arshiya is male (he/him). Always refer to him by name "Arshiya" or pronouns "he"/"him"/"his". Never use asterisks, never use "*", never use "they", never use placeholders.
-- If the current visitor IS Arshiya, address him as "you" / "Arshiya".
-- Never output markdown asterisks (*text*, **text**) or role-playing stage directions. Plain spoken English only.
-- Keep responses under 120 words, conversational, concise.
+CRITICAL RULES:
+- Arshiya is male (he/him). Use "he", "him", "his" never "they" or asterisks.
+- Address the visitor naturally, no role-play stage directions.
+- Never use markdown asterisks or formatting symbols.
+- Keep responses under 100 words, conversational and concise.
 
 RESUME CONTEXT:
 ${RESUME_CONTEXT}`,
@@ -266,53 +370,136 @@ ${RESUME_CONTEXT}`,
             },
           ],
           temperature: 0.7,
-          max_tokens: 300,
+          max_tokens: 250,
         }),
       });
 
-      const data = await response.json();
-      console.log("AvatarChat: Groq response:", data);
-
-      if (!data.choices?.[0]?.message?.content) {
-        console.error("AvatarChat: No valid response from Groq API");
-        return "Sorry, I couldn't process that request.";
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
 
-      const raw = data.choices[0].message.content || "I couldn't process that request.";
-      // Strip markdown asterisks and role-play stage directions
+      const data = await response.json();
+
+      if (!data.choices?.[0]?.message?.content) {
+        return "I couldn't process that request.";
+      }
+
+      const raw = data.choices[0].message.content;
       return raw.replace(/\*+/g, "").replace(/\s{2,}/g, " ").trim();
     } catch (error) {
       console.error("AvatarChat: Groq API error:", error);
-      console.error("AvatarChat: Error details:", {
-        message: error.message,
-        status: error.status || "unknown",
-      });
       return "Sorry, I'm having trouble connecting right now.";
     }
   },
 };
 
-// Main Avatar Chat Component
+const ChatMessage = ({ type, content, isLast }) => {
+  const isUser = type === "user";
+  const isAi = type === "ai";
+  const isSystem = type === "system";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className={`
+        w-full mb-2 last:mb-0
+        ${isUser ? "flex justify-end" : "flex justify-start"}
+      `}
+    >
+      <div
+        className={`
+          max-w-[90%] px-4 py-2.5 rounded-2xl text-sm
+          ${isUser
+            ? "bg-gradient-to-r from-purple-600/80 to-indigo-600/80 text-white rounded-br-md"
+            : isAi
+            ? "bg-white/10 text-cyan-100/90 backdrop-blur-sm rounded-bl-md border border-white/5"
+            : "text-white/60 text-xs"
+          }
+        `}
+      >
+        {content}
+      </div>
+    </motion.div>
+  );
+};
+
+const ChatBubble = ({ messages, isListening, transcript, isThinking, error }) => {
+  return (
+    <div className="w-full max-h-[280px] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-1 space-y-1">
+      {error && !isListening && (
+        <ChatMessage type="system" content={error} />
+      )}
+
+      {isListening && transcript && (
+        <ChatMessage type="ai" content={transcript} isLast />
+      )}
+
+      {isThinking && (
+        <ChatMessage
+          type="ai"
+          content={
+            <span className="flex items-center gap-1.5">
+              <span className="flex gap-0.5">
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
+                  className="w-1.5 h-1.5 bg-cyan-400/80 rounded-full"
+                />
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                  className="w-1.5 h-1.5 bg-cyan-400/80 rounded-full"
+                />
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                  className="w-1.5 h-1.5 bg-cyan-400/80 rounded-full"
+                />
+              </span>
+              Thinking...
+            </span>
+          }
+          isLast={!messages.length}
+        />
+      )}
+
+      {messages.map((msg, idx) => (
+        <ChatMessage
+          key={`${msg.type}-${idx}`}
+          type={msg.type}
+          content={msg.content}
+          isLast={idx === messages.length - 1}
+        />
+      ))}
+    </div>
+  );
+};
+
 const AvatarChat = ({ onVisemeUpdate }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [aiResponse, setAiResponse] = useState("");
-  const [conversation, setConversation] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [isThinking, setIsThinking] = useState(false);
-  const [typedText, setTypedText] = useState("");
-  const [lastUserText, setLastUserText] = useState("");
+  const [inputText, setInputText] = useState("");
+  const [error, setError] = useState("");
   const lastHandledRef = useRef("");
 
   const sendToGroq = async (text) => {
     if (!text?.trim() || isThinking) return;
     const clean = text.trim();
-    setLastUserText(clean);
-    setAiResponse("");
+    setInputText("");
+    setError("");
+
+    setMessages(prev => [...prev, { type: "user", content: clean }]);
     setIsThinking(true);
+
     const response = await GroqAPI.chat(clean);
-    setAiResponse(response);
-    setConversation((prev) => [...prev, { user: clean, ai: response }]);
     setIsThinking(false);
+
+    setMessages(prev => [...prev, { type: "ai", content: response }]);
     setIsSpeaking(true);
+
     speak(
       response,
       () => {
@@ -325,9 +512,9 @@ const AvatarChat = ({ onVisemeUpdate }) => {
 
   const handleTextSubmit = (e) => {
     e.preventDefault();
-    const t = typedText;
-    setTypedText("");
-    sendToGroq(t);
+    if (inputText.trim()) {
+      sendToGroq(inputText);
+    }
   };
 
   const {
@@ -338,151 +525,180 @@ const AvatarChat = ({ onVisemeUpdate }) => {
     stopListening,
     speechSupported,
     speechError,
+    browserInfo,
   } = useSpeechRecognition();
-  const { speak } = useTextToSpeech();
 
-  const handleMicClick = () => {
-    if (!speechSupported) {
-      alert("Voice recognition is not supported. Please use Chrome, Edge, or Safari on desktop.");
-      return;
-    }
-    if (isListening) {
-      stopListening();
-      return;
-    }
-    setAiResponse("");
-    startListening();
-  };
+  const { speak, stop } = useTextToSpeech();
 
-  // When listening ends with a final transcript, send it to Groq
   useEffect(() => {
-    if (isThinking) return;
+    setError(speechError || "");
+  }, [speechError]);
+
+  useEffect(() => {
+    if (isThinking || isSpeaking) return;
     const text = finalTranscript?.trim();
     if (!text || text === lastHandledRef.current) return;
     lastHandledRef.current = text;
     sendToGroq(text);
-  }, [finalTranscript, isThinking]);
+  }, [finalTranscript, isThinking, isSpeaking]);
 
-  // Viseme is driven directly from SpeechSynthesis word boundaries in sendToGroq/speak
+  const handleMicClick = () => {
+    setError("");
+    if (isListening) {
+      stopListening();
+    } else {
+      if (!speechSupported) {
+        setError(browserInfo.name === "unknown"
+          ? "Voice not supported. Try Chrome or Edge."
+          : `${browserInfo.name} may not support voice. Try Chrome or Edge.`);
+        return;
+      }
+      startListening();
+    }
+  };
+
+  const isProcessing = isThinking || isSpeaking || isListening;
 
   return (
-    <div className="absolute bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] pointer-events-auto flex flex-col items-end gap-3">
-      {/* Transcript/AI response — lives above the bar as a sibling so it never overlaps */}
-      <AnimatePresence mode="wait">
-        {(lastUserText || aiResponse || isThinking || speechError || (isListening && transcript)) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="w-full max-w-lg"
-          >
-            <div className="bg-[rgba(9,9,31,0.92)] backdrop-blur-lg rounded-2xl border border-white/10 px-4 py-3 shadow-xl">
-              {isListening && transcript && (
-                <>
-                  <div className="text-red-300/80 text-xs uppercase tracking-wide mb-1">Listening…</div>
-                  <div className="text-white/80 text-sm mb-2 italic break-words">{transcript}</div>
-                </>
-              )}
-              {speechError && !isListening && (
-                <div className="text-red-300/90 text-xs mb-2">{speechError}</div>
-              )}
-              {lastUserText && (
-                <div className="text-white/60 text-xs uppercase tracking-wide mb-1">You</div>
-              )}
-              {lastUserText && (
-                <div className="text-white/90 text-sm mb-2 break-words">{lastUserText}</div>
-              )}
-              {(aiResponse || isThinking) && (
-                <div className="text-cyan-300/70 text-xs uppercase tracking-wide mb-1">Arshiya</div>
-              )}
-              {isThinking && !aiResponse && (
-                <div className="text-cyan-300/80 text-sm italic">Thinking…</div>
-              )}
-              {aiResponse && (
-                <div className="text-cyan-200/95 text-sm break-words leading-relaxed">{aiResponse}</div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="absolute bottom-6 right-6 z-50 w-[360px] max-w-[calc(100vw-3rem)] pointer-events-auto">
+      <div className="flex flex-col gap-3">
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full flex items-center gap-3 bg-[rgba(9,9,31,0.85)] backdrop-blur-xl rounded-full border border-white/10 p-2"
-      >
-        {/* Mic button */}
-        <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleMicClick}
-          disabled={!speechSupported}
-          className={`
-            w-16 h-16 rounded-full flex items-center justify-center
-            ${!speechSupported
-              ? "opacity-50 cursor-not-allowed"
-              : ""
-            } ${
-              isListening || isSpeaking
-                ? "bg-white/10 border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                : "bg-white/5 border-white/10 hover:bg-white/10"
-              }
-            border transition-all duration-300 backdrop-blur-md
-          `}
-        >
-          <motion.div
-            animate={isListening || isSpeaking ? { scale: [1, 1.15, 1], opacity: [1, 0.8, 1] } : {}}
-            transition={{ duration: 1, repeat: isListening || isSpeaking ? Infinity : 0 }}
-            className={`
-              w-7 h-7 rounded-full flex items-center justify-center
-              ${isListening || isSpeaking
-                ? "bg-gradient-to-br from-red-500 to-pink-500"
-                : "bg-gradient-to-br from-purple-500 to-indigo-500"
-              }
-            `}
-          >
-            <svg
-              className="w-4 h-4 text-white"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
+        <AnimatePresence mode="wait">
+          {(messages.length > 0 || isListening || transcript || isThinking || error) && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-gradient-to-br from-[rgba(12,12,35,0.95)] to-[rgba(8,8,28,0.95)] backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl shadow-black/30 overflow-hidden"
             >
-              <rect x="9" y="2" width="6" height="12" rx="3" />
-              <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-              <line x1="8" y1="23" x2="16" y2="23" />
-            </svg>
-          </motion.div>
-        </motion.button>
+              <div className="px-5 py-3 border-b border-white/5">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/50 text-xs font-medium uppercase tracking-wider">
+                    Chat with Arshiya
+                  </span>
+                  {isListening && (
+                    <motion.span
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="text-red-400 text-xs font-medium flex items-center gap-1.5"
+                    >
+                      <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                      Listening
+                    </motion.span>
+                  )}
+                </div>
+              </div>
 
-        {/* Text input fallback */}
-        <form onSubmit={handleTextSubmit} className="flex-1 flex items-center gap-2 pr-2">
-          <input
-            type="text"
-            value={typedText}
-            onChange={(e) => setTypedText(e.target.value)}
-            placeholder={
-              isThinking ? "Thinking..." :
-              isSpeaking ? "Speaking..." :
-              isListening ? "Listening..." :
-              "Type or tap mic to ask..."
-            }
-            disabled={isThinking}
-            className="flex-1 bg-transparent text-white text-sm placeholder:text-white/40 outline-none px-2 py-2 min-w-0"
-          />
-          <button
-            type="submit"
-            disabled={!typedText.trim() || isThinking}
-            className="text-white/70 hover:text-white disabled:opacity-30 text-xs font-medium px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 transition"
-          >
-            Send
-          </button>
-        </form>
+              <div className="p-4">
+                <ChatBubble
+                  messages={messages}
+                  isListening={isListening}
+                  transcript={transcript}
+                  isThinking={isThinking}
+                  error={error}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-[rgba(12,12,35,0.9)] to-[rgba(8,8,28,0.9)] backdrop-blur-xl rounded-full border border-white/10 shadow-2xl shadow-black/30"
+        >
+          <form onSubmit={handleTextSubmit} className="flex items-center gap-2 px-2 py-2">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleMicClick}
+              disabled={!speechSupported}
+              className={`
+                w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0
+                transition-all duration-300
+                ${!speechSupported
+                  ? "opacity-40 cursor-not-allowed bg-white/5"
+                  : isListening || isSpeaking
+                  ? "bg-gradient-to-br from-red-500 to-pink-600 shadow-[0_0_25px_rgba(239,68,68,0.4)]"
+                  : "bg-gradient-to-br from-purple-600 to-indigo-600 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+                }
+              `}
+            >
+              {isListening ? (
+                <motion.svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                >
+                  <rect x="6" y="4" width="4" height="16" rx="2" />
+                  <rect x="14" y="4" width="4" height="16" rx="2" />
+                </motion.svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </motion.button>
+
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={
+                  isProcessing
+                    ? isListening ? "Listening..." : isThinking ? "Thinking..." : "Speaking..."
+                    : "Type or tap mic..."
+                }
+                disabled={isProcessing}
+                className="w-full bg-white/5 text-white text-sm placeholder:text-white/40 outline-none px-4 py-3 rounded-full border border-transparent focus:border-white/10 transition-all disabled:opacity-50"
+              />
+            </div>
+
+            <motion.button
+              type="submit"
+              whileHover={{ scale: inputText.trim() ? 1.05 : 1 }}
+              whileTap={{ scale: inputText.trim() ? 0.95 : 1 }}
+              disabled={!inputText.trim() || isProcessing}
+              className={`
+                w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                transition-all duration-200
+                ${inputText.trim() && !isProcessing
+                  ? "bg-gradient-to-br from-cyan-500 to-teal-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                  : "bg-white/10 opacity-40 cursor-not-allowed"
+                }
+              `}
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                <path d="M22 2L11 13" />
+              </svg>
+            </motion.button>
+          </form>
+        </motion.div>
+      </div>
     </div>
   );
 };

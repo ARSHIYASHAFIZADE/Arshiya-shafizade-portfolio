@@ -6,11 +6,10 @@ import CanvasLoader from "../Loader";
 import AvatarChat from "./AvatarChat";
 import * as THREE from "three";
 
-// Fallback component when WebGL is not available
 const WebGLFallback = ({ error }) => (
   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-lg">
     <div className="text-center px-8 py-12">
-      <div className="text-6xl mb-4 opacity-50">🎨</div>
+      <div className="text-6xl mb-4 opacity-50"></div>
       <p className="text-white/70 text-sm max-w-md leading-relaxed">
         3D graphics not supported on this device.
       </p>
@@ -25,7 +24,6 @@ const WebGLFallback = ({ error }) => (
             <li>• Try Chrome, Edge, or Safari on desktop</li>
             <li>• Enable hardware acceleration in browser settings</li>
             <li>• Update GPU drivers if outdated</li>
-            <li>• Disable browser extensions that might block WebGL</li>
           </ul>
         </div>
       )}
@@ -33,7 +31,6 @@ const WebGLFallback = ({ error }) => (
   </div>
 );
 
-// Canvas error fallback
 const CanvasErrorFallback = ({ error, resetErrorBoundary }) => (
   <div className="w-full h-screen flex items-center justify-center z-50">
     <div className="text-center px-8 py-12 bg-red-500/20 rounded-xl max-w-md mx-4">
@@ -63,17 +60,19 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   const rightArmBone = useRef(null);
   const leftShoulderBone = useRef(null);
   const rightShoulderBone = useRef(null);
+  const leftForearmBone = useRef(null);
+  const rightForearmBone = useRef(null);
+  const leftHandBone = useRef(null);
+  const rightHandBone = useRef(null);
   const jawBone = useRef(null);
   const morphMeshes = useRef([]);
   const initialRotations = useRef(new Map());
   const blinkTimer = useRef({ next: 2 + Math.random() * 3, progress: 0 });
 
-  // Notify parent when model loads
   useEffect(() => {
     if (scene) onModelLoaded?.();
   }, [scene, onModelLoaded]);
 
-  // Collect bones + morph meshes once
   useEffect(() => {
     if (!scene) return;
     morphMeshes.current = [];
@@ -103,27 +102,49 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
         if (!rightShoulderBone.current && (n === "rightshoulder" || n === "right_shoulder")) rightShoulderBone.current = node;
         if (!leftArmBone.current && (n === "leftarm" || n === "left_arm" || n === "leftupperarm")) leftArmBone.current = node;
         if (!rightArmBone.current && (n === "rightarm" || n === "right_arm" || n === "rightupperarm")) rightArmBone.current = node;
+        if (!leftForearmBone.current && (n === "leftforearm" || n === "left_forearm")) leftForearmBone.current = node;
+        if (!rightForearmBone.current && (n === "rightforearm" || n === "right_forearm")) rightForearmBone.current = node;
+        if (!leftHandBone.current && (n === "lefthand" || n === "left_hand")) leftHandBone.current = node;
+        if (!rightHandBone.current && (n === "righthand" || n === "right_hand")) rightHandBone.current = node;
         if (!jawBone.current && (n === "jaw" || n.includes("jaw"))) jawBone.current = node;
       }
       if (node.isMesh && node.morphTargetInfluences && node.morphTargetDictionary) {
         morphMeshes.current.push(node);
       }
     });
-    [headBone, neckBone, spineBone, leftArmBone, rightArmBone, leftShoulderBone, rightShoulderBone, jawBone].forEach((r) => {
+
+    [headBone, neckBone, spineBone, leftArmBone, rightArmBone, leftShoulderBone, rightShoulderBone, jawBone, leftForearmBone, rightForearmBone, leftHandBone, rightHandBone].forEach((r) => {
       if (r.current) initialRotations.current.set(r.current.uuid, r.current.rotation.clone());
     });
-    // Drop arms out of T-pose into a natural resting posture (Mixamo/Avaturn rig)
-    // Mixamo arms point outward along +/- X; rotating Z brings them down along the body.
-    if (leftArmBone.current) {
-      leftArmBone.current.rotation.z += 1.15;
-      leftArmBone.current.rotation.y += 0.05;
-      initialRotations.current.set(leftArmBone.current.uuid, leftArmBone.current.rotation.clone());
-    }
-    if (rightArmBone.current) {
-      rightArmBone.current.rotation.z -= 1.15;
-      rightArmBone.current.rotation.y -= 0.05;
-      initialRotations.current.set(rightArmBone.current.uuid, rightArmBone.current.rotation.clone());
-    }
+
+    const setArmPose = (upperArm, forearm, hand, isLeft) => {
+      if (!upperArm) return;
+
+      const direction = isLeft ? 1 : -1;
+
+      upperArm.rotation.z += 1.35 * direction;
+      upperArm.rotation.y += 0.08 * direction;
+      upperArm.rotation.x -= 0.15;
+
+      if (forearm) {
+        forearm.rotation.z -= 0.25 * direction;
+        forearm.rotation.x -= 0.1;
+        initialRotations.current.set(forearm.uuid, forearm.rotation.clone());
+      }
+
+      if (hand) {
+        hand.rotation.z += 0.05 * direction;
+        hand.rotation.y += 0.1 * direction;
+        hand.rotation.x -= 0.2;
+        initialRotations.current.set(hand.uuid, hand.rotation.clone());
+      }
+
+      initialRotations.current.set(upperArm.uuid, upperArm.rotation.clone());
+    };
+
+    setArmPose(leftArmBone.current, leftForearmBone.current, leftHandBone.current, true);
+    setArmPose(rightArmBone.current, rightForearmBone.current, rightHandBone.current, false);
+
   }, [scene]);
 
   if (!scene) return null;
@@ -131,103 +152,116 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   const scale = isMobile ? [0.95, 0.95, 0.95] : [0.85, 0.85, 0.85];
   const modelY = isMobile ? -1.35 : -1.25;
 
+  const visemeRef = useRef(viseme);
+  useEffect(() => { visemeRef.current = viseme; }, [viseme]);
+
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
 
-    // Idle breathing sway on spine
     if (spineBone.current) {
       const init = initialRotations.current.get(spineBone.current.uuid);
       if (init) {
-        spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.015;
-        spineBone.current.rotation.z = init.z + Math.sin(t * 0.7) * 0.01;
+        spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.012;
+        spineBone.current.rotation.z = init.z + Math.sin(t * 0.6) * 0.008;
       }
     }
 
-    // Head follows mouse + subtle idle
-    const targetYaw = mouse.x * 0.5 + Math.sin(t * 0.5) * 0.05;
-    const targetPitch = -mouse.y * 0.3 + Math.sin(t * 0.8) * 0.03;
+    const targetYaw = mouse.x * 0.4 + Math.sin(t * 0.4) * 0.04;
+    const targetPitch = -mouse.y * 0.25 + Math.sin(t * 0.7) * 0.02;
+
     if (neckBone.current) {
       const init = initialRotations.current.get(neckBone.current.uuid);
       if (init) {
-        neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.4, 0.08);
-        neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.4, 0.08);
+        neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.35, 0.06);
+        neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.35, 0.06);
       }
     }
+
     if (headBone.current) {
       const init = initialRotations.current.get(headBone.current.uuid);
-      if (init) {
-        // Speech-driven head bob + tilt when viseme is active (substitute for missing mouth morphs)
-        const speakBob = viseme > 0.01 ? Math.sin(t * 9) * viseme * 0.04 : 0;
-        const speakTilt = viseme > 0.01 ? Math.sin(t * 5.3) * viseme * 0.025 : 0;
-        headBone.current.rotation.y = THREE.MathUtils.lerp(headBone.current.rotation.y, init.y + targetYaw * 0.6 + speakTilt, 0.1);
-        headBone.current.rotation.x = THREE.MathUtils.lerp(headBone.current.rotation.x, init.x + targetPitch * 0.6 + speakBob, 0.1);
-      }
+      const currentViseme = visemeRef.current;
+      const speakBob = currentViseme > 0.01 ? Math.sin(t * 10) * currentViseme * 0.025 : 0;
+      const speakTilt = currentViseme > 0.01 ? Math.sin(t * 6) * currentViseme * 0.02 : 0;
+
+      headBone.current.rotation.y = THREE.MathUtils.lerp(
+        headBone.current.rotation.y,
+        init.y + targetYaw * 0.55 + speakTilt,
+        0.08
+      );
+      headBone.current.rotation.x = THREE.MathUtils.lerp(
+        headBone.current.rotation.x,
+        init.x + targetPitch * 0.55 + speakBob,
+        0.08
+      );
     }
-    // If a jaw bone exists (some rigs), open it on viseme
+
     if (jawBone.current) {
       const init = initialRotations.current.get(jawBone.current.uuid);
-      if (init) {
-        const target = viseme > 0.01 ? init.x + viseme * 0.35 : init.x;
-        jawBone.current.rotation.x = THREE.MathUtils.lerp(jawBone.current.rotation.x, target, 0.4);
-      }
+      const currentViseme = visemeRef.current;
+      const target = currentViseme > 0.01 ? init.x + currentViseme * 0.3 : init.x;
+      jawBone.current.rotation.x = THREE.MathUtils.lerp(jawBone.current.rotation.x, target, 0.35);
     }
 
-    // Gentle arm sway — subtle, no exaggerated gestures
+    const gentleSway = (bone, init, offsetA, offsetB) => {
+      if (!bone || !init) return;
+      bone.rotation.z = init.z + Math.sin(t * offsetA) * 0.01;
+      bone.rotation.x = init.x + Math.sin(t * offsetB) * 0.008;
+    };
+
     if (leftArmBone.current) {
-      const init = initialRotations.current.get(leftArmBone.current.uuid);
-      if (init) {
-        leftArmBone.current.rotation.z = init.z + Math.sin(t * 0.8) * 0.015;
-        leftArmBone.current.rotation.x = init.x + Math.sin(t * 1.2 + 0.5) * 0.01;
-      }
+      gentleSway(leftArmBone.current, initialRotations.current.get(leftArmBone.current.uuid), 0.7, 1.1);
     }
     if (rightArmBone.current) {
-      const init = initialRotations.current.get(rightArmBone.current.uuid);
-      if (init) {
-        rightArmBone.current.rotation.z = init.z + Math.sin(t * 0.9 + 0.5) * 0.015;
-        rightArmBone.current.rotation.x = init.x + Math.sin(t * 1.3 + 1.2) * 0.01;
-      }
+      gentleSway(rightArmBone.current, initialRotations.current.get(rightArmBone.current.uuid), 0.8, 1.15);
     }
 
-    // Lip-sync driven by viseme amplitude (pulsed per word from SpeechSynthesis onboundary).
-    // Small hi-freq modulation on top so it doesn't look mechanical.
-    const modulation =
-      Math.sin(t * 22) * 0.15 +
-      Math.sin(t * 13.7 + 0.6) * 0.1;
-    const mouthTarget = viseme > 0.01
-      ? Math.max(0, Math.min(0.9, viseme * 0.7 + modulation * viseme))
-      : 0;
-    // Blink via morph if available (eyesClosed), else skip
     blinkTimer.current.next -= 1 / 60;
     let blinkValue = 0;
     if (blinkTimer.current.next <= 0) {
       blinkTimer.current.progress += 1 / 60;
-      blinkValue = blinkTimer.current.progress < 0.075 ? blinkTimer.current.progress / 0.075
-                 : blinkTimer.current.progress < 0.15 ? 1 - (blinkTimer.current.progress - 0.075) / 0.075
+      blinkValue = blinkTimer.current.progress < 0.07 ? blinkTimer.current.progress / 0.07
+                 : blinkTimer.current.progress < 0.14 ? 1 - (blinkTimer.current.progress - 0.07) / 0.07
                  : 0;
-      if (blinkTimer.current.progress >= 0.15) {
+      if (blinkTimer.current.progress >= 0.14) {
         blinkTimer.current.progress = 0;
-        blinkTimer.current.next = 2 + Math.random() * 4;
+        blinkTimer.current.next = 2.5 + Math.random() * 3.5;
       }
     }
+
+    const currentViseme = visemeRef.current;
+    const baseMouth = currentViseme > 0.01 ? currentViseme * 0.65 : 0;
+    const microOpen = currentViseme > 0.05 ? Math.sin(t * 18) * currentViseme * 0.12 : 0;
+    const mouthTarget = Math.max(0, Math.min(0.85, baseMouth + microOpen));
 
     for (const mesh of morphMeshes.current) {
       const dict = mesh.morphTargetDictionary;
       const infl = mesh.morphTargetInfluences;
+
       if (dict.mouthOpen !== undefined) {
-        const rate = mouthTarget > infl[dict.mouthOpen] ? 0.45 : 0.2;
+        const rate = mouthTarget > infl[dict.mouthOpen] ? 0.5 : 0.25;
         infl[dict.mouthOpen] = THREE.MathUtils.lerp(infl[dict.mouthOpen], mouthTarget, rate);
       }
-      ["jawOpen", "mouthFunnel", "mouthPucker"].forEach((k) => {
-        if (dict[k] !== undefined) {
-          infl[dict[k]] = THREE.MathUtils.lerp(infl[dict[k]], mouthTarget * 0.6, 0.3);
-        }
-      });
-      if (dict.mouthSmile !== undefined && viseme < 0.01) {
-        infl[dict.mouthSmile] = THREE.MathUtils.lerp(infl[dict.mouthSmile], 0.15, 0.02);
+
+      if (dict.jawOpen !== undefined) {
+        infl[dict.jawOpen] = THREE.MathUtils.lerp(infl[dict.jawOpen], mouthTarget * 0.7, 0.3);
       }
-      ["eyesClosed", "eyeBlinkLeft", "eyeBlinkRight"].forEach((k) => {
-        if (dict[k] !== undefined) infl[dict[k]] = blinkValue;
-      });
+
+      if (dict.mouthFunnel !== undefined) {
+        infl[dict.mouthFunnel] = THREE.MathUtils.lerp(infl[dict.mouthFunnel], mouthTarget * 0.4, 0.2);
+      }
+
+      if (dict.mouthPucker !== undefined) {
+        infl[dict.mouthPucker] = THREE.MathUtils.lerp(infl[dict.mouthPucker], mouthTarget * 0.35, 0.2);
+      }
+
+      if (dict.mouthSmile !== undefined) {
+        const smileTarget = currentViseme < 0.05 ? 0.12 : 0;
+        infl[dict.mouthSmile] = THREE.MathUtils.lerp(infl[dict.mouthSmile], smileTarget, 0.03);
+      }
+
+      if (dict.eyesClosed !== undefined) infl[dict.eyesClosed] = blinkValue;
+      if (dict.eyeBlinkLeft !== undefined) infl[dict.eyeBlinkLeft] = blinkValue;
+      if (dict.eyeBlinkRight !== undefined) infl[dict.eyeBlinkRight] = blinkValue;
     }
   });
 
@@ -249,7 +283,6 @@ const ComputersCanvas = () => {
   const [webglSupported, setWebglSupported] = useState(true);
 
   useEffect(() => {
-    // Check WebGL support
     const canvas = document.createElement("canvas");
     const supported = !!(
       window.WebGLRenderingContext &&
@@ -268,7 +301,6 @@ const ComputersCanvas = () => {
     };
   }, []);
 
-  // Show fallback if WebGL is not supported
   if (!webglSupported) {
     return (
       <div className="w-full h-screen flex items-center justify-center z-10">
@@ -301,7 +333,6 @@ const ComputersCanvas = () => {
           gl.toneMappingExposure = 0.75;
         }}
       >
-        {/* Softer three-point lighting — muted, natural skin */}
         <ambientLight intensity={0.25} />
         <directionalLight
           castShadow
@@ -336,7 +367,6 @@ const ComputersCanvas = () => {
         <Preload all />
       </Canvas>
 
-      {/* Avatar Chat UI - overlays the canvas */}
       <AvatarChat onVisemeUpdate={setViseme} />
     </ErrorBoundary>
   );
