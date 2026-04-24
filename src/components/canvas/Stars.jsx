@@ -1,8 +1,6 @@
-import React from 'react';
-import { useState, useRef, Suspense } from "react";
+import React, { useState, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Points, PointMaterial, Preload } from "@react-three/drei";
-import * as random from "maath/random/dist/maath-random.esm";
 import { ErrorBoundary } from "react-error-boundary";
 
 function ErrorFallback({ error }) {
@@ -17,31 +15,21 @@ function ErrorFallback({ error }) {
 const Stars = (props) => {
   const ref = useRef();
   const [sphere] = useState(() => {
-    const positions = random.inSphere(new Float32Array(5000), { radius: 1.2 });
+    // Generate random sphere positions - simpler approach without NaN issues
+    const count = 500;
+    const positions = new Float32Array(count * 3);
 
-    // Check for NaN values in the positions array
-    for (let i = 0; i < positions.length; i++) {
-      if (isNaN(positions[i])) {
-        console.error(`Invalid position value at index ${i}:`, positions[i]);
-      }
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      const r = 1.2 + Math.random() * 0.5;
+
+      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = r * Math.cos(phi);
     }
 
-    // Filter out NaN values
-    const validPositions = positions.filter((value) => !isNaN(value));
-
-    if (validPositions.length !== positions.length) {
-      console.error(
-        "Invalid positions detected in sphere array. Filtering out NaN values."
-      );
-    }
-
-    // If no valid positions, use a fallback array
-    if (validPositions.length === 0) {
-      console.error("No valid positions found. Using fallback positions.");
-      return new Float32Array([0, 0, 0, 1, 1, 1, -1, -1, -1]); // Example fallback
-    }
-
-    return validPositions;
+    return positions;
   });
 
   useFrame((state, delta) => {
