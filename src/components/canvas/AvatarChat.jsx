@@ -127,47 +127,44 @@ const useSpeechRecognition = () => {
   };
 };
 
-// Split text at sentence/word boundaries so each chunk fits the TTS URL limit
-const chunkText = (text, maxLen = 185) => {
-  if (text.length <= maxLen) return [text.trim()];
-  const chunks = [];
-  let rem = text.trim();
-  while (rem.length > 0) {
-    if (rem.length <= maxLen) { chunks.push(rem); break; }
-    // prefer splitting at sentence end, then comma, then space
-    let cut = Math.max(
-      rem.lastIndexOf('. ', maxLen),
-      rem.lastIndexOf('? ', maxLen),
-      rem.lastIndexOf('! ', maxLen),
-      rem.lastIndexOf(', ', maxLen),
-      rem.lastIndexOf(' ',  maxLen)
-    );
-    if (cut <= 0) cut = maxLen;
-    chunks.push(rem.slice(0, cut + 1).trim());
-    rem = rem.slice(cut + 1).trim();
-  }
-  return chunks.filter(Boolean);
-};
-
 const useTextToSpeech = () => {
   const speakRef = useRef(null);
 
   const speak = useCallback((text, onEnd, onViseme) => {
-    // Cancel anything currently playing
     if (speakRef.current) {
       speakRef.current.cancelled = true;
       speakRef.current.audios.forEach(a => { try { a.pause(); a.src = ''; } catch {} });
+      speakRef.current.urls.forEach(u => { try { URL.revokeObjectURL(u); } catch {} });
     }
 
-    const state = { cancelled: false, audios: [] };
+    const state = { cancelled: false, audios: [], urls: [] };
     speakRef.current = state;
 
     (async () => {
-      const chunks = chunkText(text);
-      for (const chunk of chunks) {
-        if (state.cancelled) break;
+      try {
+        const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+        const res = await fetch("https://api.groq.com/openai/v1/audio/speech", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "playai-tts",
+            input: text,
+            voice: "Fritz-PlayAI",
+            response_format: "mp3",
+          }),
+        });
 
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=en&client=tw-ob`;
+        if (state.cancelled) return;
+        if (!res.ok) throw new Error(`Groq TTS ${res.status}`);
+
+        const blob = await res.blob();
+        if (state.cancelled) return;
+
+        const url = URL.createObjectURL(blob);
+        state.urls.push(url);
         const audio = new Audio(url);
         state.audios.push(audio);
 
@@ -175,23 +172,24 @@ const useTextToSpeech = () => {
         const animateViseme = () => {
           if (state.cancelled) return;
           const t = audio.currentTime || 0;
-          const v = 0.32 + Math.sin(t * 13) * 0.3 + Math.sin(t * 7.3) * 0.12;
+          const v = 0.3 + Math.sin(t * 13) * 0.28 + Math.sin(t * 7) * 0.12;
           onViseme?.(Math.max(0.08, Math.min(0.9, v)));
           rafId = requestAnimationFrame(animateViseme);
         };
-
-        audio.onplay = () => { animateViseme(); };
-
+        audio.onplay = () => animateViseme();
         onViseme?.(0.35);
+
         await new Promise((resolve) => {
-          const timeout = setTimeout(resolve, 20000); // safety timeout per chunk
-          audio.onended = () => { clearTimeout(timeout); resolve(); };
-          audio.onerror = () => { clearTimeout(timeout); resolve(); };
-          audio.play().catch(() => { clearTimeout(timeout); resolve(); });
+          const guard = setTimeout(resolve, 120000);
+          audio.onended = () => { clearTimeout(guard); resolve(); };
+          audio.onerror = () => { clearTimeout(guard); resolve(); };
+          audio.play().catch(() => { clearTimeout(guard); resolve(); });
         });
 
         if (rafId) cancelAnimationFrame(rafId);
-        onViseme?.(0.04);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("TTS error:", err);
       }
 
       if (!state.cancelled) {
@@ -206,6 +204,7 @@ const useTextToSpeech = () => {
     if (speakRef.current) {
       speakRef.current.cancelled = true;
       speakRef.current.audios.forEach(a => { try { a.pause(); a.src = ''; } catch {} });
+      speakRef.current.urls.forEach(u => { try { URL.revokeObjectURL(u); } catch {} });
       speakRef.current = null;
     }
   }, []);
