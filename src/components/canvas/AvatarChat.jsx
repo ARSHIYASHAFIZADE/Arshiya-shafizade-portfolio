@@ -167,8 +167,7 @@ const useTextToSpeech = () => {
       for (const chunk of chunks) {
         if (state.cancelled) break;
 
-        // StreamElements public TTS — natural "Brian" voice, no API key, works everywhere
-        const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(chunk)}`;
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=en&client=tw-ob`;
         const audio = new Audio(url);
         state.audios.push(audio);
 
