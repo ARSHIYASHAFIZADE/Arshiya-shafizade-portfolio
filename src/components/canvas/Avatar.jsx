@@ -2,7 +2,6 @@ import React, { Suspense, useEffect, useState, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF, Environment, ContactShadows, useProgress } from "@react-three/drei";
 import { ErrorBoundary } from "react-error-boundary";
-import CanvasLoader from "../Loader";
 import AvatarChat from "./AvatarChat";
 import * as THREE from "three";
 
@@ -385,7 +384,7 @@ const ComputersCanvas = () => {
         <directionalLight position={[-4, 3, -2]} intensity={0.35} color="#b0c4ff" />
         <directionalLight position={[0, 2, -5]} intensity={0.2} color="#ffd1a6" />
 
-        <Suspense fallback={<CanvasLoader />}>
+        <Suspense fallback={null}>
           <Environment preset="apartment" background={false} />
           <ContactShadows
             position={[0, isMobile ? -0.95 : -0.85, 0]}
