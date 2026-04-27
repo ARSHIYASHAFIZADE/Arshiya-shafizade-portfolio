@@ -127,125 +127,88 @@ const useSpeechRecognition = () => {
   };
 };
 
+// Split text at sentence/word boundaries so each chunk fits the TTS URL limit
+const chunkText = (text, maxLen = 185) => {
+  if (text.length <= maxLen) return [text.trim()];
+  const chunks = [];
+  let rem = text.trim();
+  while (rem.length > 0) {
+    if (rem.length <= maxLen) { chunks.push(rem); break; }
+    // prefer splitting at sentence end, then comma, then space
+    let cut = Math.max(
+      rem.lastIndexOf('. ', maxLen),
+      rem.lastIndexOf('? ', maxLen),
+      rem.lastIndexOf('! ', maxLen),
+      rem.lastIndexOf(', ', maxLen),
+      rem.lastIndexOf(' ',  maxLen)
+    );
+    if (cut <= 0) cut = maxLen;
+    chunks.push(rem.slice(0, cut + 1).trim());
+    rem = rem.slice(cut + 1).trim();
+  }
+  return chunks.filter(Boolean);
+};
+
 const useTextToSpeech = () => {
   const speakRef = useRef(null);
-  const voiceRef = useRef(null);
-
-  const pickVoice = useCallback(() => {
-    const voices = speechSynthesis.getVoices();
-    if (!voices.length) return null;
-    const prefs = [
-      /google uk english male/i, /google us english/i,
-      /microsoft david/i, /microsoft guy/i, /microsoft mark/i,
-      /daniel/i, /^alex$/i, /^fred$/i, /james/i, /male/i,
-    ];
-    for (const p of prefs) {
-      const v = voices.find(x => p.test(x.name) && /^en/i.test(x.lang));
-      if (v) return v;
-    }
-    return voices.find(v => /^en/i.test(v.lang)) || voices[0];
-  }, []);
-
-  useEffect(() => {
-    const load = () => { voiceRef.current = pickVoice(); };
-    load();
-    // addEventListener is safer than onvoiceschanged= (not clobbered by StrictMode)
-    speechSynthesis.addEventListener("voiceschanged", load);
-    return () => speechSynthesis.removeEventListener("voiceschanged", load);
-  }, [pickVoice]);
-
-  // Linux/Chrome bug: synthesis gets stuck in paused state mid-utterance.
-  // Poll every 250ms and resume if paused while we're expecting speech.
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (speakRef.current && speechSynthesis.paused) {
-        speechSynthesis.resume();
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, []);
 
   const speak = useCallback((text, onEnd, onViseme) => {
-    if (!window.speechSynthesis) { onEnd?.(); return; }
+    // Cancel anything currently playing
+    if (speakRef.current) {
+      speakRef.current.cancelled = true;
+      speakRef.current.audios.forEach(a => { try { a.pause(); a.src = ''; } catch {} });
+    }
 
-    speechSynthesis.cancel();
-    speakRef.current = null;
+    const state = { cancelled: false, audios: [] };
+    speakRef.current = state;
 
-    setTimeout(() => {
-      // Linux/Chrome: synthesis can start in paused state — always resume first
-      if (speechSynthesis.paused) speechSynthesis.resume();
+    (async () => {
+      const chunks = chunkText(text);
+      for (const chunk of chunks) {
+        if (state.cancelled) break;
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 0.95;
-      utterance.volume = 1.0;
+        // StreamElements public TTS — natural "Brian" voice, no API key, works everywhere
+        const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(chunk)}`;
+        const audio = new Audio(url);
+        state.audios.push(audio);
 
-      const voice = voiceRef.current || pickVoice();
-      if (voice) utterance.voice = voice;
+        let rafId = null;
+        const animateViseme = () => {
+          if (state.cancelled) return;
+          const t = audio.currentTime || 0;
+          const v = 0.32 + Math.sin(t * 13) * 0.3 + Math.sin(t * 7.3) * 0.12;
+          onViseme?.(Math.max(0.08, Math.min(0.9, v)));
+          rafId = requestAnimationFrame(animateViseme);
+        };
 
-      const vowelCount = (w) => (w.match(/[aeiouAEIOU]/g) || []).length;
-      let decayTimer = null;
-      const pulse = (s) => {
-        onViseme?.(Math.max(0, Math.min(1, s)));
-        if (decayTimer) clearTimeout(decayTimer);
-        decayTimer = setTimeout(() => onViseme?.(0.05), 120);
-      };
+        audio.onplay = () => { animateViseme(); };
 
-      // If speech never starts within 3s, TTS is unavailable — unblock the UI
-      const startTimeout = setTimeout(() => {
+        onViseme?.(0.35);
+        await new Promise((resolve) => {
+          const timeout = setTimeout(resolve, 20000); // safety timeout per chunk
+          audio.onended = () => { clearTimeout(timeout); resolve(); };
+          audio.onerror = () => { clearTimeout(timeout); resolve(); };
+          audio.play().catch(() => { clearTimeout(timeout); resolve(); });
+        });
+
+        if (rafId) cancelAnimationFrame(rafId);
+        onViseme?.(0.04);
+      }
+
+      if (!state.cancelled) {
         speakRef.current = null;
         onViseme?.(0);
         onEnd?.();
-      }, 3000);
-
-      utterance.onstart = () => {
-        clearTimeout(startTimeout);
-        pulse(0.4);
-      };
-
-      utterance.onboundary = (e) => {
-        if (e.name !== "word") return;
-        const word = text.slice(e.charIndex, e.charIndex + (e.charLength || 4));
-        const wordLen = word.length;
-        let s = 0.35;
-        if (/[aeiouyAEIOUY]/.test(word)) s = 0.45 + vowelCount(word) * 0.12;
-        if (/[pbtdkg]/.test(word)) s += 0.15;
-        if (/[fszv]/.test(word))   s += 0.08;
-        if (/[mn]/.test(word))     s -= 0.08;
-        if (wordLen <= 3) s += 0.1;
-        if (wordLen >= 7) s += 0.15;
-        s += wordLen * 0.02;
-        pulse(Math.min(1, s));
-      };
-
-      utterance.onend = () => {
-        clearTimeout(startTimeout);
-        if (decayTimer) clearTimeout(decayTimer);
-        speakRef.current = null;
-        onViseme?.(0);
-        onEnd?.();
-      };
-
-      utterance.onerror = (e) => {
-        clearTimeout(startTimeout);
-        if (e.error === "interrupted") return;
-        if (decayTimer) clearTimeout(decayTimer);
-        speakRef.current = null;
-        onViseme?.(0);
-        onEnd?.();
-      };
-
-      speakRef.current = utterance;
-      speechSynthesis.speak(utterance);
-
-      // Resume immediately after speak() in case engine is paused (Linux bug)
-      if (speechSynthesis.paused) speechSynthesis.resume();
-    }, 100);
-  }, [pickVoice]);
+      }
+    })();
+  }, []);
 
   const stop = useCallback(() => {
-    speechSynthesis.cancel();
-    speakRef.current = null;
+    if (speakRef.current) {
+      speakRef.current.cancelled = true;
+      speakRef.current.audios.forEach(a => { try { a.pause(); a.src = ''; } catch {} });
+      speakRef.current = null;
+    }
   }, []);
 
   return { speak, stop };
