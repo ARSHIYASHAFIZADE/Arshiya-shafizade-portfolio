@@ -477,6 +477,8 @@ const ChatBubble = ({ messages, isListening, transcript, isThinking, error }) =>
   );
 };
 
+const GREETING = "Hey! I'm Arshiya. Ask me anything about my projects, experience, or skills.";
+
 const AvatarChat = ({ onVisemeUpdate }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -484,38 +486,8 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const [inputText, setInputText] = useState("");
   const [error, setError] = useState("");
   const lastHandledRef = useRef("");
-
-  const sendToGroq = async (text) => {
-    if (!text?.trim() || isThinking) return;
-    const clean = text.trim();
-    setInputText("");
-    setError("");
-
-    setMessages(prev => [...prev, { type: "user", content: clean }]);
-    setIsThinking(true);
-
-    const response = await GroqAPI.chat(clean);
-    setIsThinking(false);
-
-    setMessages(prev => [...prev, { type: "ai", content: response }]);
-    setIsSpeaking(true);
-
-    speak(
-      response,
-      () => {
-        setIsSpeaking(false);
-        onVisemeUpdate?.(0);
-      },
-      (level) => onVisemeUpdate?.(level)
-    );
-  };
-
-  const handleTextSubmit = (e) => {
-    e.preventDefault();
-    if (inputText.trim()) {
-      sendToGroq(inputText);
-    }
-  };
+  const onVisemeRef = useRef(onVisemeUpdate);
+  useEffect(() => { onVisemeRef.current = onVisemeUpdate; }, [onVisemeUpdate]);
 
   const {
     isListening,
@@ -530,20 +502,68 @@ const AvatarChat = ({ onVisemeUpdate }) => {
 
   const { speak, stop } = useTextToSpeech();
 
+  const speakResponse = useCallback((text) => {
+    setIsSpeaking(true);
+    speak(
+      text,
+      () => { setIsSpeaking(false); onVisemeRef.current?.(0); },
+      (level) => onVisemeRef.current?.(level)
+    );
+  }, [speak]);
+
+  // Auto-greeting with lip sync when chat first appears
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMessages([{ type: "ai", content: GREETING }]);
+      speakResponse(GREETING);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [speakResponse]);
+
+  const sendToGroq = useCallback(async (text) => {
+    if (!text?.trim() || isThinking) return;
+    if (isSpeaking) {
+      stop();
+      setIsSpeaking(false);
+      onVisemeRef.current?.(0);
+    }
+    const clean = text.trim();
+    setInputText("");
+    setError("");
+    setMessages(prev => [...prev, { type: "user", content: clean }]);
+    setIsThinking(true);
+    const response = await GroqAPI.chat(clean);
+    setIsThinking(false);
+    setMessages(prev => [...prev, { type: "ai", content: response }]);
+    speakResponse(response);
+  }, [isThinking, isSpeaking, speakResponse, stop]);
+
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+    if (inputText.trim()) sendToGroq(inputText);
+  };
+
   useEffect(() => {
     setError(speechError || "");
   }, [speechError]);
 
   useEffect(() => {
-    if (isThinking || isSpeaking) return;
+    if (isThinking) return;
     const text = finalTranscript?.trim();
     if (!text || text === lastHandledRef.current) return;
     lastHandledRef.current = text;
     sendToGroq(text);
-  }, [finalTranscript, isThinking, isSpeaking]);
+  }, [finalTranscript, isThinking, sendToGroq]);
 
   const handleMicClick = () => {
     setError("");
+    // Clicking mic while avatar is speaking stops it
+    if (isSpeaking) {
+      stop();
+      setIsSpeaking(false);
+      onVisemeRef.current?.(0);
+      return;
+    }
     if (isListening) {
       stopListening();
     } else {
@@ -560,7 +580,7 @@ const AvatarChat = ({ onVisemeUpdate }) => {
   const isProcessing = isThinking || isSpeaking || isListening;
 
   return (
-    <div className="absolute bottom-6 right-6 z-50 w-[360px] max-w-[calc(100vw-3rem)] pointer-events-auto">
+    <div className="absolute top-[20%] right-6 z-50 w-[340px] max-w-[calc(100vw-3rem)] pointer-events-auto">
       <div className="flex flex-col gap-3">
 
         <AnimatePresence mode="wait">
@@ -615,14 +635,17 @@ const AvatarChat = ({ onVisemeUpdate }) => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleMicClick}
-              disabled={!speechSupported}
+              disabled={!speechSupported && !isSpeaking}
+              title={isSpeaking ? "Click to stop" : isListening ? "Click to stop listening" : "Click to speak"}
               className={`
                 w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0
                 transition-all duration-300
-                ${!speechSupported
+                ${!speechSupported && !isSpeaking
                   ? "opacity-40 cursor-not-allowed bg-white/5"
-                  : isListening || isSpeaking
+                  : isListening
                   ? "bg-gradient-to-br from-red-500 to-pink-600 shadow-[0_0_25px_rgba(239,68,68,0.4)]"
+                  : isSpeaking
+                  ? "bg-gradient-to-br from-cyan-500 to-teal-500 shadow-[0_0_25px_rgba(6,182,212,0.4)] cursor-pointer"
                   : "bg-gradient-to-br from-purple-600 to-indigo-600 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                 }
               `}
@@ -639,6 +662,20 @@ const AvatarChat = ({ onVisemeUpdate }) => {
                 >
                   <rect x="6" y="4" width="4" height="16" rx="2" />
                   <rect x="14" y="4" width="4" height="16" rx="2" />
+                </motion.svg>
+              ) : isSpeaking ? (
+                <motion.svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                >
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                 </motion.svg>
               ) : (
                 <svg
@@ -662,11 +699,9 @@ const AvatarChat = ({ onVisemeUpdate }) => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={
-                  isProcessing
-                    ? isListening ? "Listening..." : isThinking ? "Thinking..." : "Speaking..."
-                    : "Type or tap mic..."
+                  isListening ? "Listening..." : isThinking ? "Thinking..." : "Ask me anything..."
                 }
-                disabled={isProcessing}
+                disabled={isListening || isThinking}
                 className="w-full bg-white/5 text-white text-sm placeholder:text-white/40 outline-none px-4 py-3 rounded-full border border-transparent focus:border-white/10 transition-all disabled:opacity-50"
               />
             </div>
@@ -675,11 +710,11 @@ const AvatarChat = ({ onVisemeUpdate }) => {
               type="submit"
               whileHover={{ scale: inputText.trim() ? 1.05 : 1 }}
               whileTap={{ scale: inputText.trim() ? 0.95 : 1 }}
-              disabled={!inputText.trim() || isProcessing}
+              disabled={!inputText.trim() || isListening || isThinking}
               className={`
                 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
                 transition-all duration-200
-                ${inputText.trim() && !isProcessing
+                ${inputText.trim() && !isListening && !isThinking
                   ? "bg-gradient-to-br from-cyan-500 to-teal-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                   : "bg-white/10 opacity-40 cursor-not-allowed"
                 }

@@ -70,10 +70,10 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   const [actionPlayed, setActionPlayed] = useState(false);
   const mixerRef = useRef(null);
   const blinkTimer = useRef({ next: 2 + Math.random() * 3, progress: 0 });
-
-  useEffect(() => {
-    if (scene) onModelLoaded?.();
-  }, [scene, onModelLoaded]);
+  const transitionRef = useRef({ alpha: 0 });
+  const actionPlayedRef = useRef(false);
+  // Arm pose tracked independently so mixer.update() can't drag arms back toward T-pose
+  const armPose = useRef({ lx: null, lz: null, rx: null, rz: null });
 
   useEffect(() => {
     if (!scene) return;
@@ -115,38 +115,12 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
       }
     });
 
-    [headBone, neckBone, spineBone, leftArmBone, rightArmBone, leftShoulderBone, rightShoulderBone, jawBone, leftForearmBone, rightForearmBone, leftHandBone, rightHandBone].forEach((r) => {
+    // Capture bind pose BEFORE the animation runs — this is the natural idle target
+    [headBone, neckBone, spineBone, leftArmBone, rightArmBone, leftShoulderBone,
+     rightShoulderBone, jawBone, leftForearmBone, rightForearmBone, leftHandBone, rightHandBone
+    ].forEach((r) => {
       if (r.current) initialRotations.current.set(r.current.uuid, r.current.rotation.clone());
     });
-
-    const setArmPose = (upperArm, forearm, hand, isLeft) => {
-      if (!upperArm) return;
-
-      const direction = isLeft ? 1 : -1;
-
-      upperArm.rotation.x = 1.57;
-      upperArm.rotation.y = 0;
-      upperArm.rotation.z = 0.2 * direction;
-
-      if (forearm) {
-        forearm.rotation.x = 0;
-        forearm.rotation.y = 0;
-        forearm.rotation.z = 0;
-        initialRotations.current.set(forearm.uuid, forearm.rotation.clone());
-      }
-
-      if (hand) {
-        hand.rotation.x = 0;
-        hand.rotation.y = 0;
-        hand.rotation.z = 0;
-        initialRotations.current.set(hand.uuid, hand.rotation.clone());
-      }
-
-      initialRotations.current.set(upperArm.uuid, upperArm.rotation.clone());
-    };
-
-    setArmPose(leftArmBone.current, leftForearmBone.current, leftHandBone.current, true);
-    setArmPose(rightArmBone.current, rightForearmBone.current, rightHandBone.current, false);
 
     if (animations && animations.length > 0) {
       const mixer = new THREE.AnimationMixer(scene);
@@ -155,12 +129,15 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
       const action = animations[0];
       const clip = mixer.clipAction(action);
       clip.setLoop(THREE.LoopOnce);
-      clip.clampWhenFinished = true;
-      clip.timeScale = 1.5;
+      clip.clampWhenFinished = true;   // hold final frame so fadeOut can blend from it
+      clip.timeScale = 2.0;
 
       clip.play();
 
       const onFinished = () => {
+        // Smooth 1.5s fade: mixer blends all bones (legs, hips, spine, arms) from
+        // the held final frame back toward bind pose — no snapping anywhere
+        clip.fadeOut(1.5);
         onModelLoaded?.();
         setActionPlayed(true);
       };
@@ -176,123 +153,154 @@ const Computers = ({ isMobile, viseme, onModelLoaded }) => {
   if (!scene) return null;
 
   const scale = isMobile ? [0.95, 0.95, 0.95] : [0.85, 0.85, 0.85];
-  const modelY = isMobile ? -1.35 : -1.25;
+  const modelY = isMobile ? -0.95 : -0.85;
 
   const visemeRef = useRef(viseme);
   useEffect(() => { visemeRef.current = viseme; }, [viseme]);
 
-  useFrame(({ clock }) => {
-    if (mixerRef.current && !actionPlayed) {
-      mixerRef.current.update(clock.getDelta());
+  useFrame((state, delta) => {
+    // Always update — mixer needs this to process the fadeOut after action ends
+    if (mixerRef.current) {
+      mixerRef.current.update(delta);
     }
-    const t = clock.getElapsedTime();
+    const t = state.clock.getElapsedTime();
 
-    if (actionPlayed) {
-      if (spineBone.current) {
-        const init = initialRotations.current.get(spineBone.current.uuid);
-        if (init) {
-          spineBone.current.rotation.x = init.x + Math.sin(t * 1.2) * 0.012;
-          spineBone.current.rotation.z = init.z + Math.sin(t * 0.6) * 0.008;
-        }
+    if (!actionPlayed) return;
+
+    // Ramp up a settle factor over ~1.5s matching the fadeOut duration.
+    // Starts at 0.04 (slow pull) and rises to 0.1 (firm pull) so the
+    // stand-up feels organic — not a snap, not a crawl.
+    if (!actionPlayedRef.current) {
+      actionPlayedRef.current = true;
+      transitionRef.current = { alpha: 0 };
+    }
+    transitionRef.current.alpha = Math.min(1, transitionRef.current.alpha + delta / 1.5);
+    const settle = 0.04 + transitionRef.current.alpha * 0.06;
+
+    // Spine breathing — gentle bob in/out
+    if (spineBone.current) {
+      const init = initialRotations.current.get(spineBone.current.uuid);
+      if (init) {
+        spineBone.current.rotation.x = THREE.MathUtils.lerp(
+          spineBone.current.rotation.x, init.x + Math.sin(t * 1.2) * 0.012, settle);
+        spineBone.current.rotation.z = THREE.MathUtils.lerp(
+          spineBone.current.rotation.z, init.z + Math.sin(t * 0.6) * 0.008, settle * 0.7);
       }
+    }
 
-      const targetYaw = mouse.x * 0.4 + Math.sin(t * 0.4) * 0.04;
-      const targetPitch = -mouse.y * 0.25 + Math.sin(t * 0.7) * 0.02;
+    // Head and neck follow the mouse
+    const yaw   = mouse.x * 0.4 + Math.sin(t * 0.4) * 0.04;
+    const pitch = -mouse.y * 0.25 + Math.sin(t * 0.7) * 0.02;
 
-      if (neckBone.current) {
-        const init = initialRotations.current.get(neckBone.current.uuid);
-        if (init) {
-          neckBone.current.rotation.y = THREE.MathUtils.lerp(neckBone.current.rotation.y, init.y + targetYaw * 0.35, 0.06);
-          neckBone.current.rotation.x = THREE.MathUtils.lerp(neckBone.current.rotation.x, init.x + targetPitch * 0.35, 0.06);
-        }
+    if (neckBone.current) {
+      const init = initialRotations.current.get(neckBone.current.uuid);
+      if (init) {
+        neckBone.current.rotation.y = THREE.MathUtils.lerp(
+          neckBone.current.rotation.y, init.y + yaw * 0.35, settle);
+        neckBone.current.rotation.x = THREE.MathUtils.lerp(
+          neckBone.current.rotation.x, init.x + pitch * 0.35, settle);
       }
+    }
 
-      if (headBone.current) {
-        const init = initialRotations.current.get(headBone.current.uuid);
-        const currentViseme = visemeRef.current;
-        const speakBob = currentViseme > 0.01 ? Math.sin(t * 10) * currentViseme * 0.025 : 0;
-        const speakTilt = currentViseme > 0.01 ? Math.sin(t * 6) * currentViseme * 0.02 : 0;
-
+    if (headBone.current) {
+      const init = initialRotations.current.get(headBone.current.uuid);
+      if (init) {
+        const v = visemeRef.current;
+        const bob  = v > 0.01 ? Math.sin(t * 10) * v * 0.025 : 0;
+        const tilt = v > 0.01 ? Math.sin(t * 6)  * v * 0.02  : 0;
         headBone.current.rotation.y = THREE.MathUtils.lerp(
-          headBone.current.rotation.y,
-          init.y + targetYaw * 0.55 + speakTilt,
-          0.08
-        );
+          headBone.current.rotation.y, init.y + yaw * 0.55 + tilt, settle);
         headBone.current.rotation.x = THREE.MathUtils.lerp(
-          headBone.current.rotation.x,
-          init.x + targetPitch * 0.55 + speakBob,
-          0.08
-        );
+          headBone.current.rotation.x, init.x + pitch * 0.55 + bob,  settle);
       }
+    }
 
-      if (jawBone.current) {
-        const init = initialRotations.current.get(jawBone.current.uuid);
-        const currentViseme = visemeRef.current;
-        const target = currentViseme > 0.01 ? init.x + currentViseme * 0.3 : init.x;
+    // Jaw driven by viseme
+    if (jawBone.current) {
+      const init = initialRotations.current.get(jawBone.current.uuid);
+      if (init) {
+        const v = visemeRef.current;
+        const target = v > 0.01 ? init.x + v * 0.3 : init.x;
         jawBone.current.rotation.x = THREE.MathUtils.lerp(jawBone.current.rotation.x, target, 0.35);
       }
+    }
 
-      const gentleSway = (bone, init, offsetA, offsetB) => {
-        if (!bone || !init) return;
-      bone.rotation.z = init.z + Math.sin(t * offsetA) * 0.01;
-      bone.rotation.x = init.x + Math.sin(t * offsetB) * 0.008;
-    };
+    // Arms — tracked in armPose ref so mixer.update() can never drag them back
+    // toward T-pose (which caused the "hands move up" during transition).
+    // On first frame after action ends, seed the ref from the bone's current value
+    // (the animation's final clamped frame) then lerp independently from there.
+    const ARM_DOWN_X = 1.3; // 74° from T-pose → ~16° from vertical
+    const leftInit  = initialRotations.current.get(leftArmBone.current?.uuid);
+    const rightInit = initialRotations.current.get(rightArmBone.current?.uuid);
 
-      if (leftArmBone.current) {
-        gentleSway(leftArmBone.current, initialRotations.current.get(leftArmBone.current.uuid), 0.7, 1.1);
+    if (leftArmBone.current && leftInit) {
+      if (armPose.current.lx === null) {
+        armPose.current.lx = leftArmBone.current.rotation.x;
+        armPose.current.lz = leftArmBone.current.rotation.z;
       }
-      if (rightArmBone.current) {
-        gentleSway(rightArmBone.current, initialRotations.current.get(rightArmBone.current.uuid), 0.8, 1.15);
-      }
+      armPose.current.lx = THREE.MathUtils.lerp(
+        armPose.current.lx, leftInit.x + ARM_DOWN_X + Math.sin(t * 1.1) * 0.008, settle);
+      armPose.current.lz = THREE.MathUtils.lerp(
+        armPose.current.lz, leftInit.z + Math.sin(t * 0.7) * 0.01, settle);
+      leftArmBone.current.rotation.x = armPose.current.lx;
+      leftArmBone.current.rotation.z = armPose.current.lz;
+    }
 
-      blinkTimer.current.next -= 1 / 60;
-      let blinkValue = 0;
-      if (blinkTimer.current.next <= 0) {
-        blinkTimer.current.progress += 1 / 60;
-        blinkValue = blinkTimer.current.progress < 0.07 ? blinkTimer.current.progress / 0.07
-                   : blinkTimer.current.progress < 0.14 ? 1 - (blinkTimer.current.progress - 0.07) / 0.07
-                   : 0;
-        if (blinkTimer.current.progress >= 0.14) {
-          blinkTimer.current.progress = 0;
-          blinkTimer.current.next = 2.5 + Math.random() * 3.5;
-        }
+    if (rightArmBone.current && rightInit) {
+      if (armPose.current.rx === null) {
+        armPose.current.rx = rightArmBone.current.rotation.x;
+        armPose.current.rz = rightArmBone.current.rotation.z;
       }
+      armPose.current.rx = THREE.MathUtils.lerp(
+        armPose.current.rx, rightInit.x + ARM_DOWN_X + Math.sin(t * 1.15) * 0.008, settle);
+      armPose.current.rz = THREE.MathUtils.lerp(
+        armPose.current.rz, rightInit.z + Math.sin(t * 0.8) * 0.01, settle);
+      rightArmBone.current.rotation.x = armPose.current.rx;
+      rightArmBone.current.rotation.z = armPose.current.rz;
+    }
 
-      const currentViseme = visemeRef.current;
-      const baseMouth = currentViseme > 0.01 ? currentViseme * 0.65 : 0;
-      const microOpen = currentViseme > 0.05 ? Math.sin(t * 18) * currentViseme * 0.12 : 0;
-      const mouthTarget = Math.max(0, Math.min(0.85, baseMouth + microOpen));
+    // Blink
+    blinkTimer.current.next -= delta;
+    let blinkValue = 0;
+    if (blinkTimer.current.next <= 0) {
+      blinkTimer.current.progress += delta;
+      blinkValue = blinkTimer.current.progress < 0.07
+        ? blinkTimer.current.progress / 0.07
+        : blinkTimer.current.progress < 0.14
+        ? 1 - (blinkTimer.current.progress - 0.07) / 0.07
+        : 0;
+      if (blinkTimer.current.progress >= 0.14) {
+        blinkTimer.current.progress = 0;
+        blinkTimer.current.next = 2.5 + Math.random() * 3.5;
+      }
+    }
+
+    // Mouth morphs driven by viseme
+    const v = visemeRef.current;
+    const baseMouth  = v > 0.01 ? v * 0.65 : 0;
+    const microOpen  = v > 0.05 ? Math.sin(t * 18) * v * 0.12 : 0;
+    const mouthTarget = Math.max(0, Math.min(0.85, baseMouth + microOpen));
 
     for (const mesh of morphMeshes.current) {
       const dict = mesh.morphTargetDictionary;
       const infl = mesh.morphTargetInfluences;
 
-      if (dict.mouthOpen !== undefined) {
-        const rate = mouthTarget > infl[dict.mouthOpen] ? 0.5 : 0.25;
-        infl[dict.mouthOpen] = THREE.MathUtils.lerp(infl[dict.mouthOpen], mouthTarget, rate);
-      }
+      if (dict.mouthOpen !== undefined)
+        infl[dict.mouthOpen] = THREE.MathUtils.lerp(
+          infl[dict.mouthOpen], mouthTarget, mouthTarget > infl[dict.mouthOpen] ? 0.5 : 0.25);
 
-      if (dict.jawOpen !== undefined) {
-        infl[dict.jawOpen] = THREE.MathUtils.lerp(infl[dict.jawOpen], mouthTarget * 0.7, 0.3);
-      }
-
-      if (dict.mouthFunnel !== undefined) {
-        infl[dict.mouthFunnel] = THREE.MathUtils.lerp(infl[dict.mouthFunnel], mouthTarget * 0.4, 0.2);
-      }
-
-      if (dict.mouthPucker !== undefined) {
+      if (dict.jawOpen     !== undefined)
+        infl[dict.jawOpen]     = THREE.MathUtils.lerp(infl[dict.jawOpen],     mouthTarget * 0.7,  0.3);
+      if (dict.mouthFunnel !== undefined)
+        infl[dict.mouthFunnel] = THREE.MathUtils.lerp(infl[dict.mouthFunnel], mouthTarget * 0.4,  0.2);
+      if (dict.mouthPucker !== undefined)
         infl[dict.mouthPucker] = THREE.MathUtils.lerp(infl[dict.mouthPucker], mouthTarget * 0.35, 0.2);
-      }
+      if (dict.mouthSmile  !== undefined)
+        infl[dict.mouthSmile]  = THREE.MathUtils.lerp(infl[dict.mouthSmile],  v < 0.05 ? 0.12 : 0, 0.03);
 
-      if (dict.mouthSmile !== undefined) {
-        const smileTarget = currentViseme < 0.05 ? 0.12 : 0;
-        infl[dict.mouthSmile] = THREE.MathUtils.lerp(infl[dict.mouthSmile], smileTarget, 0.03);
-      }
-
-      if (dict.eyesClosed !== undefined) infl[dict.eyesClosed] = blinkValue;
-      if (dict.eyeBlinkLeft !== undefined) infl[dict.eyeBlinkLeft] = blinkValue;
+      if (dict.eyesClosed    !== undefined) infl[dict.eyesClosed]    = blinkValue;
+      if (dict.eyeBlinkLeft  !== undefined) infl[dict.eyeBlinkLeft]  = blinkValue;
       if (dict.eyeBlinkRight !== undefined) infl[dict.eyeBlinkRight] = blinkValue;
-    }
     }
   });
 
@@ -379,7 +387,7 @@ const ComputersCanvas = () => {
         <Suspense fallback={<CanvasLoader />}>
           <Environment preset="apartment" background={false} />
           <ContactShadows
-            position={[0, isMobile ? -1.35 : -1.25, 0]}
+            position={[0, isMobile ? -0.95 : -0.85, 0]}
             opacity={0.45}
             scale={6}
             blur={2.4}
@@ -398,7 +406,21 @@ const ComputersCanvas = () => {
         <Preload all />
       </Canvas>
 
-      <AvatarChat onVisemeUpdate={setViseme} />
+      {!modelLoaded && (
+        <div className="absolute bottom-8 right-8 z-30 flex items-center gap-2 pointer-events-none">
+          <div className="flex gap-1">
+            {[0, 0.15, 0.3].map((d) => (
+              <span
+                key={d}
+                className="w-1.5 h-1.5 rounded-full bg-cyan-400/50"
+                style={{ animation: `pulse 1.4s ${d}s ease-in-out infinite` }}
+              />
+            ))}
+          </div>
+          <span className="text-white/30 text-xs tracking-wider">Loading</span>
+        </div>
+      )}
+      {modelLoaded && <AvatarChat onVisemeUpdate={setViseme} />}
     </ErrorBoundary>
   );
 };
